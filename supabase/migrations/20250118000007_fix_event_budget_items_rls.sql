@@ -9,6 +9,9 @@ DROP POLICY IF EXISTS "Users can view budget items for their events" ON public.e
 DROP POLICY IF EXISTS "Users can insert budget items for their events" ON public.event_budget_items;
 DROP POLICY IF EXISTS "Users can update budget items for their events" ON public.event_budget_items;
 DROP POLICY IF EXISTS "Users can delete budget items for their events" ON public.event_budget_items;
+DROP POLICY IF EXISTS "Admins and editors can insert budget items" ON public.event_budget_items;
+DROP POLICY IF EXISTS "Admins and editors can update budget items" ON public.event_budget_items;
+DROP POLICY IF EXISTS "Admins and editors can delete budget items" ON public.event_budget_items;
 
 -- Policy: Users can view budget items for events they have access to (all roles)
 CREATE POLICY "Users can view budget items for their events" ON public.event_budget_items
