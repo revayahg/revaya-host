@@ -1,0 +1,72 @@
+/* Mobile Optimizations for View Event Details and Edit Forms - Updated 2025-01-04 */
+
+/* Mobile-specific header styling */
+@media (max-width: 768px) {
+  .mobile-header {
+    padding: 1rem 0;
+  }
+  
+  .mobile-optimized .container {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+  
+  /* Make buttons stack better on mobile */
+  .mobile-optimized .flex-wrap {
+    gap: 0.5rem;
+  }
+  
+  /* Smaller text on mobile */
+  .mobile-optimized h1 {
+    font-size: 1.5rem;
+    line-height: 1.2;
+  }
+  
+  /* Better spacing for mobile */
+  .mobile-optimized .space-y-4 > * + * {
+    margin-top: 1rem;
+  }
+  
+  /* Map controls on mobile */
+  .mobile-optimized .flex-wrap button {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+  }
+  
+  /* Edit form tabs on mobile */
+  .mobile-optimized nav {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  
+  .mobile-optimized nav::-webkit-scrollbar {
+    display: none;
+  }
+  
+  /* Budget form buttons on mobile */
+  .mobile-optimized .flex-col button {
+    width: 100%;
+    margin-bottom: 0.5rem;
+  }
+  
+  .mobile-optimized .flex-col button:last-child {
+    margin-bottom: 0;
+  }
+}
+
+/* Force mobile layout on small screens */
+@media (max-width: 640px) {
+  .mobile-optimized .flex-col {
+    flex-direction: column !important;
+  }
+  
+  .mobile-optimized .lg\\:flex-row {
+    flex-direction: column !important;
+  }
+  
+  .mobile-optimized .lg\\:justify-between {
+    justify-content: flex-start !important;
+  }
+}

@@ -1,0 +1,45 @@
+.vendor-profile-form input:focus,
+.vendor-profile-form textarea:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
+.vendor-profile-form input:disabled,
+.vendor-profile-form textarea:disabled,
+.vendor-profile-form button:disabled {
+  background-color: #f3f4f6;
+  cursor: not-allowed;
+}
+
+.vendor-profile-form .error-message {
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+.vendor-profile-form .success-message {
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.loading-spinner {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}

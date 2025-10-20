@@ -1,0 +1,28 @@
+{
+  "name": "revaya-host",
+  "version": "1.0.0",
+  "description": "Event management software for producers and hospitality teams",
+  "main": "index.html",
+  "scripts": {
+    "dev": "python3 -m http.server 8000",
+    "start": "python3 -m http.server 8000",
+    "build": "echo 'Static site - no build step required'",
+    "deploy": "vercel --prod"
+  },
+  "keywords": [
+    "event-planning",
+    "hospitality",
+    "event-management",
+    "supabase",
+    "react"
+  ],
+  "author": "Revaya Hospitality Group",
+  "license": "MIT",
+  "dependencies": {},
+  "devDependencies": {
+    "vercel": "^32.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
