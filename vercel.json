@@ -8,16 +8,35 @@
   ],
   "routes": [
     {
+      "src": "/utils/(.*)",
+      "dest": "/utils/$1"
+    },
+    {
+      "src": "/components/(.*)",
+      "dest": "/components/$1"
+    },
+    {
+      "src": "/styles/(.*)",
+      "dest": "/styles/$1"
+    },
+    {
+      "src": "/assets/(.*)",
+      "dest": "/assets/$1"
+    },
+    {
+      "src": "/config/(.*)",
+      "dest": "/config/$1"
+    },
+    {
+      "src": "/context/(.*)",
+      "dest": "/context/$1"
+    },
+    {
       "src": "/(.*)",
       "dest": "/index.html"
     }
   ],
   "env": {
     "NODE_ENV": "production"
-  },
-  "functions": {
-    "supabase/functions/**/*.ts": {
-      "runtime": "nodejs18.x"
-    }
   }
 }
