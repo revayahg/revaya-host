@@ -18,7 +18,9 @@
   ],
   "author": "Revaya Hospitality Group",
   "license": "MIT",
-  "dependencies": {},
+  "dependencies": {
+    "supabase": "^2.51.0"
+  },
   "devDependencies": {
     "vercel": "^32.0.0"
   },
