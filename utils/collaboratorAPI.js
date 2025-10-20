@@ -776,7 +776,7 @@ window.collaboratorAPI = {
     try {
       
       // Validate role
-      const validRoles = ['viewer', 'editor', 'admin'];
+      const validRoles = ['viewer', 'editor', 'admin', 'owner'];
       if (!validRoles.includes(newRole)) {
         throw new Error(`Invalid role: ${newRole}. Must be one of: ${validRoles.join(', ')}`);
       }
@@ -1198,7 +1198,7 @@ window.collaboratorAPI = {
         `)
         .eq('user_id', session.user.id)
         .eq('status', 'active')
-        .in('role', ['viewer', 'editor']); // Only non-admin roles
+        .in('role', ['viewer', 'editor']); // Only non-owner roles
 
       if (error) {
         return [];
