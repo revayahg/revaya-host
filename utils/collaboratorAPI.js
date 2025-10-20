@@ -1198,7 +1198,7 @@ window.collaboratorAPI = {
         `)
         .eq('user_id', session.user.id)
         .eq('status', 'active')
-        .in('role', ['viewer', 'editor']); // Only non-owner roles
+        .in('role', ['viewer', 'editor', 'admin']); // Include admin roles
 
       if (error) {
         return [];
