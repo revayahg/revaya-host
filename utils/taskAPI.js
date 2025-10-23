@@ -30,10 +30,16 @@ window.TaskAPI = {
                         if (value === '' || value === undefined) {
                             value = null;
                         } else if (value && typeof value === 'string') {
-                            // Validate date string format
-                            const dateTest = new Date(value);
-                            if (isNaN(dateTest.getTime())) {
-                                value = null; // Invalid date becomes null
+                            // Use DateUtils for proper conversion if available
+                            if (window.DateUtils) {
+                                const dbDate = window.DateUtils.inputToDbDate(value);
+                                value = dbDate; // Will be null if invalid
+                            } else {
+                                // Fallback validation
+                                const dateTest = new Date(value);
+                                if (isNaN(dateTest.getTime())) {
+                                    value = null; // Invalid date becomes null
+                                }
                             }
                         }
                     }
@@ -199,10 +205,16 @@ window.TaskAPI = {
                         if (value === '' || value === undefined) {
                             value = null;
                         } else if (value && typeof value === 'string') {
-                            // Validate date string format
-                            const dateTest = new Date(value);
-                            if (isNaN(dateTest.getTime())) {
-                                value = null; // Invalid date becomes null
+                            // Use DateUtils for proper conversion if available
+                            if (window.DateUtils) {
+                                const dbDate = window.DateUtils.inputToDbDate(value);
+                                value = dbDate; // Will be null if invalid
+                            } else {
+                                // Fallback validation
+                                const dateTest = new Date(value);
+                                if (isNaN(dateTest.getTime())) {
+                                    value = null; // Invalid date becomes null
+                                }
                             }
                         }
                     }

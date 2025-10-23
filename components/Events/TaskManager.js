@@ -75,7 +75,12 @@ function TaskManager({ eventId, event, tasks, onTasksChange }) {
                     case 'title':
                         return (a.title || '').localeCompare(b.title || '');
                     case 'due_date':
-                        return new Date(a.due_date || '9999-12-31') - new Date(b.due_date || '9999-12-31');
+                        const getDateValue = (dueDate) => {
+                            return window.DateUtils ? 
+                                window.DateUtils.getSafeDateForSorting(dueDate) : 
+                                new Date('9999-12-31');
+                        };
+                        return getDateValue(a.due_date) - getDateValue(b.due_date);
                     default:
                         return new Date(b.created_at || 0) - new Date(a.created_at || 0);
                 }

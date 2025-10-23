@@ -131,11 +131,14 @@ function KanbanColumn({ title, status, tasks, onEdit, onTasksChange, color, even
                                 </span>
                             </div>
 
-                            {task.due_date && (
-                                <div className="text-xs text-gray-500 mb-3">
-                                    Due: {new Date(task.due_date + 'T00:00:00').toLocaleDateString()}
-                                </div>
-                            )}
+                            {task.due_date && window.DateUtils && (() => {
+                                const formattedDate = window.DateUtils.formatForDisplay(task.due_date);
+                                return formattedDate ? (
+                                    <div className="text-xs text-gray-500 mb-3">
+                                        Due: {formattedDate}
+                                    </div>
+                                ) : null;
+                            })()}
 
                             {getAssigneeLabel(task) && (
                                 <div className="mt-2 flex items-center text-sm text-gray-600 mb-1 sm:mb-2">

@@ -5,7 +5,7 @@ function EditTaskForm({ task, eventId, onSave, onCancel, vendorProfiles = [] }) 
         description: task?.description || '',
         priority: task?.priority || 'medium',
         status: task?.status || 'pending',
-        due_date: task?.due_date ? new Date(task.due_date + 'T00:00:00').toISOString().split('T')[0] : '',
+        due_date: window.DateUtils ? window.DateUtils.dbToInputDate(task?.due_date) : (task?.due_date || ''),
         assigned_to: task?.assigned_to || '',
         assigned_to_type: task?.assigned_to_type || 'free_text'
     });
