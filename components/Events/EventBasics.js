@@ -469,14 +469,14 @@ function EventBasics({ formData, onChange, onInputChange, onDateChange, onNext, 
                         id="event-logo-upload"
                         name="logo"
                         type="file"
-                        accept="image/jpeg,image/png,image/gif"
+                        accept="image/jpeg,image/png,image/gif,image/svg+xml,image/webp,image/bmp,image/tiff,image/ico"
                         onChange={handleLogoUpload}
                         className="sr-only"
                       />
                     </label>
                     <p className="pl-1">or drag and drop</p>
                   </div>
-                  <p className="text-xs text-gray-500">PNG, JPG, GIF up to 5MB</p>
+                  <p className="text-xs text-gray-500">PNG, JPG, GIF, SVG, WebP, BMP, TIFF, ICO up to 5MB</p>
                 </div>
               )}
             </div>
@@ -552,7 +552,7 @@ function EventBasics({ formData, onChange, onInputChange, onDateChange, onNext, 
                     </label>
                     <p className="pl-1">or drag and drop</p>
                   </div>
-                  <p className="text-xs text-gray-500">PNG, JPG, GIF up to 5MB</p>
+                  <p className="text-xs text-gray-500">PNG, JPG, GIF, SVG, WebP, BMP, TIFF, ICO up to 5MB</p>
                 </div>
               )}
             </div>

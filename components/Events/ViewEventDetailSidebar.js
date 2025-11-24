@@ -165,11 +165,11 @@ function ViewEventDetailSidebar({ event, currentTotals, editingBudget, handleEdi
                         </div>
                         <div>
                             <span className="text-gray-600">Expected Guests:</span>
-                            <p className="font-medium">{event.expected_attendance || 'Not specified'}</p>
+                            <p className="font-medium">{event.expected_attendance ?? 'Not specified'}</p>
                         </div>
                         <div>
                             <span className="text-gray-600">Support Staff Needed:</span>
-                            <p className="font-medium">{event.support_staff_needed || 'Not specified'}</p>
+                            <p className="font-medium">{event.support_staff_needed ?? 'Not specified'}</p>
                         </div>
                         <div>
                             <span className="text-gray-600">Event Type:</span>

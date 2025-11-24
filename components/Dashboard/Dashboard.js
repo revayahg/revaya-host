@@ -122,7 +122,7 @@ function Dashboard({ route = '' }) {
         // Get unread collaborator invitations
         const { data: unreadInvitations, error: invitationsError } = await window.supabaseClient
           .from('event_collaborator_invitations')
-          .select('id, event_id, email, role, created_at, read_status')
+          .select('id, event_id, email, permission_level, role:permission_level, created_at, read_status')
           .eq('email', session.user.email)
           .eq('status', 'pending')
           .eq('read_status', false);
@@ -426,12 +426,33 @@ function Dashboard({ route = '' }) {
                   key: 'value',
                   className: 'text-lg font-medium text-gray-900'
                 }, (() => {
-                  // Count upcoming collaborative events only
                   const currentDate = new Date();
+                  currentDate.setHours(0, 0, 0, 0);
+
+                  const getEventDate = (event) => {
+                    if (!event) return null;
+                    if (event.end_date) return event.end_date;
+                    if (event.start_date) return event.start_date;
+                    if (event.date) return event.date;
+                    if (event.event_schedule && Array.isArray(event.event_schedule) && event.event_schedule.length > 0) {
+                      const lastScheduleItem = event.event_schedule[event.event_schedule.length - 1];
+                      if (lastScheduleItem?.date) {
+                        return lastScheduleItem.date;
+                      }
+                    }
+                    return null;
+                  };
+
                   const upcomingCollaborative = collaborativeEvents.filter(collab => {
-                    const eventDate = collab.event?.end_date || collab.event?.start_date || collab.event?.date;
-                    return eventDate && new Date(eventDate) >= currentDate;
+                    const eventDateStr = getEventDate(collab.event);
+                    if (!eventDateStr) {
+                      return true;
+                    }
+                    const normalizedEventDate = new Date(eventDateStr);
+                    normalizedEventDate.setHours(0, 0, 0, 0);
+                    return normalizedEventDate >= currentDate;
                   });
+
                   return upcomingCollaborative.length;
                 })())
               ]))
@@ -508,22 +529,45 @@ function Dashboard({ route = '' }) {
                   ? 'border-indigo-500 text-indigo-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
               }`
-            }, React.createElement('div', {
-              className: 'flex items-center'
-            }, [
-              React.createElement('div', {
-                key: 'icon',
-                className: 'icon-users text-sm mr-1 sm:mr-2'
-              }),
-              React.createElement('span', {
-                key: 'desktop-text',
-                className: 'hidden sm:inline'
-              }, `Events I'm Collaborating On (${collaborativeEvents.length})`),
-              React.createElement('span', {
-                key: 'mobile-text',
-                className: 'sm:hidden'
-              }, `Collaborating (${collaborativeEvents.length})`)
-            ])),
+            }, (() => {
+              const currentDate = new Date();
+              currentDate.setHours(0, 0, 0, 0);
+
+              const getEventDate = (event) => {
+                if (!event) return null;
+                if (event.end_date) return event.end_date;
+                if (event.start_date) return event.start_date;
+                if (event.date) return event.date;
+                if (event.event_schedule && Array.isArray(event.event_schedule) && event.event_schedule.length > 0) {
+                  const lastScheduleItem = event.event_schedule[event.event_schedule.length - 1];
+                  if (lastScheduleItem?.date) {
+                    return lastScheduleItem.date;
+                  }
+                }
+                return null;
+              };
+
+              const upcomingCollaborativeCount = collaborativeEvents.filter(collab => {
+                const eventDateStr = getEventDate(collab.event);
+                if (!eventDateStr) {
+                  return true;
+                }
+                const normalizedEventDate = new Date(eventDateStr);
+                normalizedEventDate.setHours(0, 0, 0, 0);
+                return normalizedEventDate >= currentDate;
+              }).length;
+
+              return [
+                React.createElement('span', {
+                  key: 'desktop-text',
+                  className: 'hidden sm:inline'
+                }, `Events I'm Collaborating On (${upcomingCollaborativeCount})`),
+                React.createElement('span', {
+                  key: 'mobile-text',
+                  className: 'sm:hidden'
+                }, `Collaborating (${upcomingCollaborativeCount})`)
+              ];
+            })()),
             React.createElement('button', {
               key: 'notifications-tab',
               onClick: () => setActiveTab('notifications'),

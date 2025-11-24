@@ -97,6 +97,7 @@ function ViewEventDetailContent({
         const hasEventAccess = isOwner || userRole === 'viewer' || userRole === 'editor' || userRole === 'admin';
         const permissionsReady = Boolean(user && event && !loadingRole);
 
+
         return React.createElement('div', {
             className: 'min-h-screen bg-gray-50 mobile-optimized',
             'data-name': 'view-event-detail-content',
@@ -272,6 +273,28 @@ function ViewEventDetailContent({
                     }, [
                         React.createElement('div', { key: 'messages-icon', className: 'icon-message-circle text-lg mr-2' }),
                         'Event Chat'
+                    ]),
+
+                    // Staff Management button - owners and editors only
+                    canEdit && React.createElement('button', {
+                        key: 'staff-button',
+                        onClick: () => {
+                            // Navigate to edit page with staff tab
+                            window.location.hash = `#/event/edit/${eventId}`;
+                            // Use setTimeout to ensure the page loads before setting the tab
+                            setTimeout(() => {
+                                const url = new URL(window.location);
+                                url.searchParams.set('tab', 'staff');
+                                window.history.pushState({}, '', url.toString());
+                                // Force tab change by dispatching a custom event
+                                window.dispatchEvent(new Event('tabchange'));
+                            }, 100);
+                        },
+                        className: 'px-3 py-2 lg:px-4 bg-orange-600 text-white rounded-lg hover:bg-orange-700 flex items-center text-sm lg:text-base',
+                        title: 'Manage Staff'
+                    }, [
+                        React.createElement('div', { key: 'staff-icon', className: 'icon-users text-lg mr-2' }),
+                        'Staff'
                     ])
                 ].filter(Boolean))
             ]))),
@@ -288,6 +311,70 @@ function ViewEventDetailContent({
                     key: 'main-content-left',
                     className: 'lg:col-span-2 space-y-4 lg:space-y-6'
                 }, [
+                    // Days Until Event Section
+                    (event.start_date || event.end_date || event.date) && React.createElement('div', {
+                        key: 'days-until-event-section',
+                        className: 'bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 rounded-xl shadow-lg p-4 lg:p-5 relative overflow-hidden transform hover:scale-105 transition-all duration-300'
+                    }, [
+                        // Background decoration
+                        React.createElement('div', {
+                            key: 'bg-decoration',
+                            className: 'absolute inset-0 bg-gradient-to-br from-white/10 to-transparent'
+                        }),
+                        React.createElement('div', {
+                            key: 'bg-pattern',
+                            className: 'absolute top-0 right-0 w-20 h-20 bg-white/5 rounded-full -translate-y-10 translate-x-10'
+                        }),
+                        React.createElement('div', {
+                            key: 'bg-pattern-2',
+                            className: 'absolute bottom-0 left-0 w-16 h-16 bg-white/5 rounded-full translate-y-8 -translate-x-8'
+                        }),
+                        
+                        // Main content
+                        React.createElement('div', {
+                            key: 'days-counter-container',
+                            className: 'relative z-10 flex flex-col items-center justify-center text-center'
+                        }, [
+                            // Calendar icon
+                            React.createElement('div', {
+                                key: 'calendar-icon',
+                                className: 'mb-2 p-2 bg-white/20 rounded-full backdrop-blur-sm'
+                            }, React.createElement('div', {
+                                className: 'icon-calendar text-lg text-white'
+                            })),
+                            
+                            // Days counter
+                            React.createElement('div', {
+                                key: 'days-counter',
+                                className: 'mb-1'
+                            }, [
+                                React.createElement('div', {
+                                    key: 'days-number',
+                                    className: 'text-3xl lg:text-4xl font-black text-white mb-1 drop-shadow-lg tracking-tight'
+                                }, calculateDaysToGo(event.end_date || event.start_date || event.date))
+                            ]),
+                            
+                            // Event date with enhanced styling
+                            React.createElement('div', {
+                                key: 'event-date',
+                                className: 'mt-2 px-3 py-1 bg-white/20 rounded-full backdrop-blur-sm border border-white/30'
+                            }, React.createElement('div', {
+                                className: 'text-xs lg:text-sm font-medium text-white flex items-center'
+                            }, [
+                                React.createElement('div', {
+                                    key: 'date-icon',
+                                    className: 'icon-clock text-xs mr-1'
+                                }),
+                                `Event Date: ${new Date(event.end_date || event.start_date || event.date).toLocaleDateString('en-US', { 
+                                    weekday: 'long', 
+                                    year: 'numeric', 
+                                    month: 'long', 
+                                    day: 'numeric' 
+                                })}`
+                            ]))
+                        ])
+                    ]),
+
                     // About Section
                     (event.about || event.description) && React.createElement('div', {
                         key: 'about-section',

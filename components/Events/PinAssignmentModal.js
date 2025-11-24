@@ -1,65 +1,13 @@
 function PinAssignmentModal({ isOpen, onClose, onSave, x, y, eventId, existingPin = null }) {
   try {
-    const [selectedVendorId, setSelectedVendorId] = React.useState(existingPin?.assignee_vendor_id || '');
     const [notes, setNotes] = React.useState(existingPin?.notes || '');
     const [isLoading, setIsLoading] = React.useState(false);
-    const [assignedVendors, setAssignedVendors] = React.useState([]);
-    const [loadingVendors, setLoadingVendors] = React.useState(false);
 
     React.useEffect(() => {
       if (isOpen) {
-        setSelectedVendorId(existingPin?.assignee_vendor_id || '');
         setNotes(existingPin?.notes || '');
-        if (eventId) {
-          loadAssignedVendors();
-        }
       }
-    }, [isOpen, existingPin, eventId]);
-
-    const loadAssignedVendors = async () => {
-      try {
-        setLoadingVendors(true);
-        
-        // Get vendors from event_invitations table with vendor profile data
-        const { data: invitations, error } = await window.supabaseClient
-          .from('event_invitations')
-          .select(`
-            vendor_profile_id,
-            response,
-            vendor_profiles (
-              id,
-              name,
-              company,
-              email
-            )
-          `)
-          .eq('event_id', eventId);
-
-
-        if (error) {
-          return;
-        }
-
-        if (invitations && invitations.length > 0) {
-          const vendors = invitations.map(invitation => {
-            const profile = invitation.vendor_profiles;
-            return {
-              id: invitation.vendor_profile_id,
-              name: profile?.company || profile?.name || 'Unknown Vendor',
-              email: profile?.email || '',
-              status: invitation.response || 'pending'
-            };
-          });
-          setAssignedVendors(vendors);
-        } else {
-          setAssignedVendors([]);
-        }
-      } catch (error) {
-        setAssignedVendors([]);
-      } finally {
-        setLoadingVendors(false);
-      }
-    };
+    }, [isOpen, existingPin]);
 
     const handleSave = async () => {
       try {
@@ -77,8 +25,8 @@ function PinAssignmentModal({ isOpen, onClose, onSave, x, y, eventId, existingPi
         const pinData = {
           x: parseFloat(x),
           y: parseFloat(y),
-          assignee_vendor_id: null, // Since we're using text input, don't pass vendor ID
-          notes: selectedVendorId ? `Assigned to: ${selectedVendorId}\n${notes.trim()}` : notes.trim(),
+          assignee_vendor_id: null,
+          notes: notes.trim(),
           visible_to_vendor: true
         };
         
@@ -103,23 +51,8 @@ function PinAssignmentModal({ isOpen, onClose, onSave, x, y, eventId, existingPi
       },
         React.createElement('h3', {
           className: 'text-lg font-semibold mb-4'
-        }, existingPin ? 'Edit Pin Assignment' : 'Assign Pin to Vendor'),
+        }, existingPin ? 'Edit Pin' : 'Add Pin'),
         
-        React.createElement('div', {
-          className: 'mb-4'
-        },
-          React.createElement('label', {
-            className: 'block text-sm font-medium text-gray-700 mb-2'
-          }, 'Assign to Vendor'),
-          React.createElement('input', {
-            type: 'text',
-            value: selectedVendorId,
-            onChange: (e) => setSelectedVendorId(e.target.value),
-            placeholder: 'Enter vendor name or company',
-            className: 'w-full p-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500'
-          })
-        ),
-
         React.createElement('div', {
           className: 'mb-6'
         },
@@ -145,7 +78,7 @@ function PinAssignmentModal({ isOpen, onClose, onSave, x, y, eventId, existingPi
           }, 'Cancel'),
           React.createElement('button', {
             onClick: handleSave,
-            disabled: isLoading || loadingVendors,
+            disabled: isLoading,
             className: 'px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50'
           }, isLoading ? 'Saving...' : 'Save Pin')
         )

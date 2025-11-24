@@ -1,10 +1,25 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
+// Secure CORS configuration
+const allowedOrigins = [
+  'https://revayahost.com',
+  'https://www.revayahost.com',
+  'https://localhost:8000',
+  'http://localhost:8000',
+  'https://127.0.0.1:8000',
+  'http://127.0.0.1:8000'
+]
+
+function getCorsHeaders(origin: string | null) {
+  const isAllowed = origin && allowedOrigins.includes(origin)
+  return {
+    'Access-Control-Allow-Origin': isAllowed ? origin : 'null',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization, x-client-info, apikey',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Max-Age': '86400',
+    'Access-Control-Allow-Credentials': 'true'
+  }
 }
 
 // Universal Email Template Function - Compatible with ALL email clients
@@ -146,6 +161,9 @@ function createUniversalInvitationEmail(text = 'You have been invited to partici
 }
 
 serve(async (req) => {
+  const origin = req.headers.get('origin')
+  const corsHeaders = getCorsHeaders(origin)
+  
   console.log('🚀 Edge function started, method:', req.method)
   
   // Handle CORS preflight

@@ -6,8 +6,67 @@ function DraggablePin({ pin, onUpdate, onDelete, vendors = [], eventId, readonly
     const [showTooltip, setShowTooltip] = React.useState(false);
     const [showEditModal, setShowEditModal] = React.useState(false);
     const [buttonHover, setButtonHover] = React.useState(false);
+    const [tooltipPosition, setTooltipPosition] = React.useState({ bottom: '30px', top: 'auto', left: '50%', transform: 'translateX(-50%)' });
     const pinRef = React.useRef(null);
     const hideTimeout = React.useRef(null);
+
+    const calculateTooltipPosition = () => {
+      try {
+        if (!pinRef.current) return { bottom: '30px', top: 'auto', left: '50%', transform: 'translateX(-50%)' };
+        
+        const pinRect = pinRef.current.getBoundingClientRect();
+        const mapContainer = pinRef.current.closest('.map-container') || pinRef.current.parentElement;
+        if (!mapContainer) return { bottom: '30px', top: 'auto', left: '50%', transform: 'translateX(-50%)' };
+        
+        const containerRect = mapContainer.getBoundingClientRect();
+        const pinTop = pinRect.top - containerRect.top;
+        const pinBottom = containerRect.bottom - pinRect.bottom;
+        const pinLeft = pinRect.left - containerRect.left;
+        const pinRight = containerRect.right - pinRect.right;
+        
+        // Space needed for tooltip (approximately 80px)
+        const tooltipHeight = 80;
+        const tooltipWidth = 200;
+        
+        let position = {};
+        
+        // Vertical positioning: show below if pin is near top, above if near bottom
+        if (pinTop < tooltipHeight) {
+          // Pin is near top, show tooltip below
+          position.top = '30px';
+          position.bottom = 'auto';
+        } else if (pinBottom < tooltipHeight) {
+          // Pin is near bottom, show tooltip above
+          position.bottom = '30px';
+          position.top = 'auto';
+        } else {
+          // Pin is in middle, default to above
+          position.bottom = '30px';
+          position.top = 'auto';
+        }
+        
+        // Horizontal positioning: adjust if pin is near edges
+        if (pinLeft < tooltipWidth / 2) {
+          // Pin is near left edge, align tooltip to left
+          position.left = '0';
+          position.transform = 'translateX(0)';
+        } else if (pinRight < tooltipWidth / 2) {
+          // Pin is near right edge, align tooltip to right
+          position.left = 'auto';
+          position.right = '0';
+          position.transform = 'translateX(0)';
+        } else {
+          // Pin is in middle, center tooltip
+          position.left = '50%';
+          position.right = 'auto';
+          position.transform = 'translateX(-50%)';
+        }
+        
+        return position;
+      } catch (error) {
+        return { bottom: '30px', top: 'auto', left: '50%', transform: 'translateX(-50%)' };
+      }
+    };
 
     const handleMouseEnter = () => {
       try {
@@ -15,6 +74,8 @@ function DraggablePin({ pin, onUpdate, onDelete, vendors = [], eventId, readonly
           clearTimeout(hideTimeout.current);
           hideTimeout.current = null;
         }
+        const position = calculateTooltipPosition();
+        setTooltipPosition(position);
         setShowButtons(true);
         setShowTooltip(true);
       } catch (error) {
@@ -189,7 +250,7 @@ function DraggablePin({ pin, onUpdate, onDelete, vendors = [], eventId, readonly
     };
 
     const assignedVendor = pin.vendor_profiles;
-    const hasAssignment = pin.assignee_vendor_id || pin.notes;
+    const hasAssignment = pin.notes;
 
     return React.createElement(React.Fragment, null,
       React.createElement('div', {
@@ -287,23 +348,46 @@ function DraggablePin({ pin, onUpdate, onDelete, vendors = [], eventId, readonly
           className: 'pin-tooltip',
           style: {
             position: 'absolute',
-            bottom: '30px',
-            left: '50%',
-            transform: 'translateX(-50%)',
+            ...tooltipPosition,
             backgroundColor: 'rgba(0,0,0,0.8)',
             color: 'white',
-            padding: '6px 10px',
+            padding: '8px 10px',
             borderRadius: '4px',
             fontSize: '11px',
-            whiteSpace: 'nowrap',
             zIndex: 1002,
-            maxWidth: '180px'
+            maxWidth: '200px',
+            lineHeight: '1.4',
+            display: 'flex',
+            flexDirection: 'column',
+            pointerEvents: 'none'
           }
         },
-          assignedVendor && React.createElement('div', { style: { fontWeight: 'bold' } }, 
-            assignedVendor.company || assignedVendor.name || 'Assigned Vendor'
-          ),
-          pin.notes && React.createElement('div', { style: { marginTop: '2px' } }, pin.notes)
+          React.createElement('div', { 
+            key: 'notes-section',
+            style: { 
+              whiteSpace: 'normal',
+              wordWrap: 'break-word',
+              overflowWrap: 'break-word',
+              lineHeight: '1.3'
+            } 
+          }, [
+            React.createElement('span', {
+              key: 'notes-label',
+              style: {
+                fontSize: '10px',
+                color: 'rgba(255,255,255,0.7)',
+                marginRight: '4px',
+                display: 'block',
+                marginBottom: '2px'
+              }
+            }, 'Notes:'),
+            React.createElement('span', {
+              key: 'notes-value',
+              style: {
+                display: 'block'
+              }
+            }, pin.notes)
+          ])
         )
       ),
 

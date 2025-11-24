@@ -1,64 +1,68 @@
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
+import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY');
 
-const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')
+// Secure CORS configuration
+const allowedOrigins = [
+  'https://revayahost.com',
+  'https://www.revayahost.com',
+  'https://localhost:8000',
+  'http://localhost:8000',
+  'https://127.0.0.1:8000',
+  'http://127.0.0.1:8000'
+]
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+function getCorsHeaders(origin: string | null) {
+  const isAllowed = origin && allowedOrigins.includes(origin)
+  return {
+    'Access-Control-Allow-Origin': isAllowed ? origin : 'null',
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
+    'Access-Control-Max-Age': '86400',
+    'Access-Control-Allow-Credentials': 'true'
+  }
 }
-
 // Notification type handlers
 const notificationHandlers = {
   'task_assigned': {
-    subject: (data) => `New Task Assigned: ${data.task_title}`,
+    subject: (data)=>`New Task Assigned: ${data.task_title}`,
     template: 'task'
   },
   'task_updated': {
-    subject: (data) => `Task Status Updated: ${data.task_title}`,
+    subject: (data)=>`Task Status Updated: ${data.task_title}`,
     template: 'task_update'
   },
   'task_completed': {
-    subject: (data) => `Task Completed: ${data.task_title}`,
+    subject: (data)=>`Task Completed: ${data.task_title}`,
     template: 'task_complete'
   },
   'collaborator_invitation': {
-    subject: (data) => `You're invited to collaborate on ${data.event_name}`,
+    subject: (data)=>`You're invited to collaborate on ${data.event_name}`,
     template: 'invitation'
   },
   'chat_message': {
-    subject: (data) => `New message in ${data.event_name}`,
+    subject: (data)=>`New message in ${data.event_name}`,
     template: 'chat'
   },
   'event_updated': {
-    subject: (data) => `Event Updated: ${data.event_name}`,
+    subject: (data)=>`Event Updated: ${data.event_name}`,
     template: 'event'
   },
   'collaborator_status_changed': {
-    subject: (data) => `Collaboration Status Update: ${data.event_name}`,
+    subject: (data)=>`Collaboration Status Update: ${data.event_name}`,
     template: 'status'
   },
   'vendor_invitation': {
-    subject: (data) => `Event Invitation: ${data.event_name}`,
+    subject: (data)=>`Event Invitation: ${data.event_name}`,
     template: 'vendor'
   }
-}
-
+};
 // Universal Email Template Function - Compatible with ALL email clients INCLUDING OUTLOOK DARK MODE
-function createUniversalEmail({
-  title = "Notification",
-  subtitle = "",
-  content = "",
-  preheader = "",
-  buttons = [],
-  footer = "This email was sent via Revaya Host event management platform.",
-  headerColor = "#667eea",
-  buttonColor = "#10b981",
-  logoText = "RH"
-}) {
+function createUniversalEmail({ title = "Notification", subtitle = "", content = "", preheader = "", buttons = [], footer = "This email was sent via Revaya Host event management platform.", headerColor = "#667eea", buttonColor = "#10b981", logoText = "RH", unsubscribeLink = "" }) {
   // Generate buttons HTML with Outlook dark mode support
   let buttonsHTML = "";
   if (buttons && buttons.length > 0) {
-    buttonsHTML = buttons.map(button => `
+    buttonsHTML = buttons.map((button)=>`
       <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin: 5px auto;">
         <tr>
           <td align="center" style="border-radius: 8px; background-color: ${button.color || buttonColor};">
@@ -79,7 +83,6 @@ function createUniversalEmail({
       </table>
     `).join("");
   }
-
   return `
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
@@ -271,6 +274,23 @@ function createUniversalEmail({
                                 <tr>
                                     <td align="center" class="text-gray" style="color: #6b7280; font-size: 14px; line-height: 1.5; font-family: Arial, sans-serif; mso-line-height-rule: exactly;">
                                         ${footer}
+                                        ${unsubscribeLink ? `
+                                        <br><br>
+                                        <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                                            <tr>
+                                                <td align="center" style="padding-top: 10px; border-top: 1px solid #e5e7eb; margin-top: 10px;">
+                                                    <p style="margin: 10px 0 5px 0; font-size: 12px; color: #6b7280;">
+                                                        <a href="${unsubscribeLink}" style="color:#64748B;text-decoration:underline;">Unsubscribe</a>
+                                                        &nbsp;•&nbsp;
+                                                        <a href="https://www.revayahost.com/#/preferences" style="color:#64748B;text-decoration:underline;">Manage preferences</a>
+                                                        <br><br>
+                                                        Revaya Hospitality Group LLC • 407 Lincoln Road, Ste 6H, Miami Beach, FL 33139 • 
+                                                        <a href="mailto:info@revayahg.com" style="color:#64748B;text-decoration:underline;">info@revayahg.com</a>
+                                                    </p>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                        ` : ''}
                                     </td>
                                 </tr>
                             </table>
@@ -289,16 +309,16 @@ function createUniversalEmail({
     </body>
 </html>`;
 }
-
 // Email templates using universal template
 const emailTemplates = {
-  task: (data) => {
+  task: (data)=>{
     const contentBox = `
       <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background-color: #f0f4ff; border-left: 4px solid #667eea; margin: 20px 0;">
         <tr>
           <td style="padding: 20px;">
             <h3 style="color: #1e40af; margin: 0 0 10px 0; font-size: 18px; font-weight: 600; font-family: Arial, sans-serif;">📋 ${data.task_title}</h3>
             ${data.task_description ? `<p style="color: #1f2937; margin: 10px 0; font-size: 15px; font-family: Arial, sans-serif;"><strong style="color: #1e40af;">Description:</strong> ${data.task_description}</p>` : ''}
+            ${data.start_date ? `<p style="color: #1f2937; margin: 10px 0; font-size: 15px; font-family: Arial, sans-serif;"><strong style="color: #1e40af;">Start Date:</strong> ${new Date(data.start_date).toLocaleDateString()}</p>` : ''}
             ${data.due_date ? `<p style="color: #1f2937; margin: 10px 0; font-size: 15px; font-family: Arial, sans-serif;"><strong style="color: #1e40af;">Due Date:</strong> ${new Date(data.due_date).toLocaleDateString()}</p>` : ''}
             <p style="color: #1f2937; margin: 10px 0; font-size: 15px; font-family: Arial, sans-serif;"><strong style="color: #1e40af;">Priority:</strong> ${data.priority || 'medium'}</p>
             <p style="color: #1f2937; margin: 10px 0; font-size: 15px; font-family: Arial, sans-serif;"><strong style="color: #1e40af;">Event:</strong> ${data.event_name}</p>
@@ -307,7 +327,6 @@ const emailTemplates = {
         </tr>
       </table>
     `;
-
     return createUniversalEmail({
       title: "📋 Task Assignment",
       subtitle: "You've been assigned a new task!",
@@ -317,17 +336,18 @@ const emailTemplates = {
         <p style="color: #4b5563; font-size: 15px; margin-top: 30px; font-family: Arial, sans-serif;">This task has been assigned to you for the event "${data.event_name}". Click the button above to view full details and update the task status.</p>
       `,
       preheader: `New task assignment: ${data.task_title}`,
-      buttons: [{
-        text: "View Task Details",
-        url: data.accept_url,
-        color: "#667eea"
-      }],
+      buttons: [
+        {
+          text: "View Task Details",
+          url: data.accept_url,
+          color: "#667eea"
+        }
+      ],
       headerColor: "#667eea",
       buttonColor: "#667eea"
     });
   },
-  
-  task_update: (data) => {
+  task_update: (data)=>{
     const contentBox = `
       <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background-color: #f0f4ff; border-left: 4px solid #667eea; margin: 20px 0;">
         <tr>
@@ -336,12 +356,12 @@ const emailTemplates = {
             <p style="color: #1f2937; margin: 10px 0; font-size: 15px; font-family: Arial, sans-serif;"><strong style="color: #1e40af;">Event:</strong> ${data.event_name}</p>
             ${data.task_status ? `<p style="color: #1f2937; margin: 10px 0; font-size: 15px; font-family: Arial, sans-serif;"><strong style="color: #1e40af;">Status:</strong> ${data.task_status}</p>` : ''}
             ${data.task_description ? `<p style="color: #1f2937; margin: 10px 0; font-size: 15px; font-family: Arial, sans-serif;"><strong style="color: #1e40af;">Description:</strong> ${data.task_description}</p>` : ''}
+            ${data.start_date ? `<p style="color: #1f2937; margin: 10px 0; font-size: 15px; font-family: Arial, sans-serif;"><strong style="color: #1e40af;">Start Date:</strong> ${new Date(data.start_date).toLocaleDateString()}</p>` : ''}
             ${data.due_date ? `<p style="color: #1f2937; margin: 10px 0; font-size: 15px; font-family: Arial, sans-serif;"><strong style="color: #1e40af;">Due Date:</strong> ${new Date(data.due_date).toLocaleDateString()}</p>` : ''}
           </td>
         </tr>
       </table>
     `;
-
     return createUniversalEmail({
       title: "📋 Task Update",
       subtitle: "Task status has been updated",
@@ -351,17 +371,18 @@ const emailTemplates = {
         <p style="color: #4b5563; font-size: 15px; margin-top: 30px; font-family: Arial, sans-serif;">${data.message || 'The task status has been updated.'}</p>
       `,
       preheader: `Task update: ${data.task_title}`,
-      buttons: [{
-        text: "View Task Details",
-        url: data.accept_url,
-        color: "#667eea"
-      }],
+      buttons: [
+        {
+          text: "View Task Details",
+          url: data.accept_url,
+          color: "#667eea"
+        }
+      ],
       headerColor: "#667eea",
       buttonColor: "#667eea"
     });
   },
-  
-  task_complete: (data) => {
+  task_complete: (data)=>{
     const contentBox = `
       <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background-color: #f0fdf4; border-left: 4px solid #10b981; margin: 20px 0;">
         <tr>
@@ -373,7 +394,6 @@ const emailTemplates = {
         </tr>
       </table>
     `;
-
     return createUniversalEmail({
       title: "✅ Task Completed",
       subtitle: "Great job!",
@@ -383,32 +403,30 @@ const emailTemplates = {
         <p style="color: #4b5563; font-size: 15px; margin-top: 30px; font-family: Arial, sans-serif;">The task "${data.task_title}" has been completed for the event "${data.event_name}". Thank you for your hard work!</p>
       `,
       preheader: `Task completed: ${data.task_title}`,
-      buttons: [{
-        text: "View Event Details",
-        url: data.accept_url,
-        color: "#10b981"
-      }],
+      buttons: [
+        {
+          text: "View Event Details",
+          url: data.accept_url,
+          color: "#10b981"
+        }
+      ],
       headerColor: "#10b981",
       buttonColor: "#10b981"
     });
   },
-  
-  invitation: (data) => {
+  invitation: (data)=>{
     const contentBox = `
       <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background-color: #f0f4ff; border-left: 4px solid #667eea; margin: 20px 0;">
         <tr>
           <td style="padding: 20px;">
             <h3 style="color: #1e40af; margin: 0 0 10px 0; font-size: 18px; font-weight: 600; font-family: Arial, sans-serif;">🤝 Your Role: ${data.permission_level || 'Viewer'}</h3>
             <p style="color: #1f2937; margin: 10px 0; font-size: 15px; font-family: Arial, sans-serif;">
-            ${data.permission_level === 'admin' ? 'Full access to edit, manage, and invite others to this event.' : 
-              data.permission_level === 'editor' ? 'Can view and edit event details, tasks, and budget.' : 
-              'Can view event details and participate in discussions.'}
+            ${data.permission_level === 'admin' ? 'Full access to edit, manage, and invite others to this event.' : data.permission_level === 'editor' ? 'Can view and edit event details, tasks, and budget.' : 'Can view event details and participate in discussions.'}
           </p>
           </td>
         </tr>
       </table>
     `;
-
     return createUniversalEmail({
       title: "🤝 Collaboration Invitation",
       subtitle: "You're invited to collaborate!",
@@ -421,17 +439,18 @@ const emailTemplates = {
         <p style="color: #4b5563; font-size: 15px; margin-top: 30px; font-family: Arial, sans-serif;">Join the collaboration to help plan and manage this event together.</p>
       `,
       preheader: `Collaboration invitation for ${data.event_name}`,
-      buttons: [{
-        text: "Accept Invitation",
-        url: data.accept_url,
-        color: "#667eea"
-      }],
+      buttons: [
+        {
+          text: "Accept Invitation",
+          url: data.accept_url,
+          color: "#667eea"
+        }
+      ],
       headerColor: "#667eea",
       buttonColor: "#667eea"
     });
   },
-  
-  chat: (data) => {
+  chat: (data)=>{
     const contentBox = `
       <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background-color: #f0fdf4; border-left: 4px solid #10b981; margin: 20px 0;">
         <tr>
@@ -442,7 +461,6 @@ const emailTemplates = {
         </tr>
       </table>
     `;
-
     return createUniversalEmail({
       title: "💬 New Message",
       subtitle: `New message in ${data.event_name}`,
@@ -452,17 +470,18 @@ const emailTemplates = {
         <p style="color: #4b5563; font-size: 15px; margin-top: 30px; font-family: Arial, sans-serif;">Reply to this message or view the full conversation in the event chat.</p>
       `,
       preheader: `New message from ${data.sender_name}`,
-      buttons: [{
-        text: "View Message",
-        url: data.accept_url,
-        color: "#10b981"
-      }],
+      buttons: [
+        {
+          text: "View Message",
+          url: data.accept_url,
+          color: "#10b981"
+        }
+      ],
       headerColor: "#10b981",
       buttonColor: "#10b981"
     });
   },
-  
-  event: (data) => {
+  event: (data)=>{
     const contentBox = `
       <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background-color: #fffbeb; border-left: 4px solid #f59e0b; margin: 20px 0;">
         <tr>
@@ -474,7 +493,6 @@ const emailTemplates = {
         </tr>
       </table>
     `;
-
     return createUniversalEmail({
       title: "📅 Event Update",
       subtitle: "Event details have been updated",
@@ -484,26 +502,25 @@ const emailTemplates = {
         <p style="color: #4b5563; font-size: 15px; margin-top: 30px; font-family: Arial, sans-serif;">Check the updated event details to stay informed about any changes.</p>
       `,
       preheader: `Event update: ${data.event_name}`,
-      buttons: [{
-        text: "View Event",
-        url: data.accept_url,
-        color: "#f59e0b"
-      }],
+      buttons: [
+        {
+          text: "View Event",
+          url: data.accept_url,
+          color: "#f59e0b"
+        }
+      ],
       headerColor: "#f59e0b",
       buttonColor: "#f59e0b"
     });
   },
-  
-  status: (data) => {
+  status: (data)=>{
     const isAccepted = data.status_change && data.status_change.toLowerCase().includes('accepted');
     const isDeclined = data.status_change && data.status_change.toLowerCase().includes('declined');
-    
     const headerColor = isAccepted ? '#10b981' : isDeclined ? '#ef4444' : '#667eea';
     const buttonColor = isAccepted ? '#10b981' : isDeclined ? '#ef4444' : '#667eea';
     const emoji = isAccepted ? '✅' : isDeclined ? '❌' : '🤝';
     const bgColor = isAccepted ? '#f0fdf4' : isDeclined ? '#fef2f2' : '#f0f4ff';
     const accentColor = isAccepted ? '#059669' : isDeclined ? '#dc2626' : '#1e40af';
-    
     const contentBox = `
       <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background-color: ${bgColor}; border-left: 4px solid ${headerColor}; margin: 20px 0;">
         <tr>
@@ -518,41 +535,31 @@ const emailTemplates = {
         </tr>
       </table>
     `;
-
     return createUniversalEmail({
       title: `${emoji} ${data.status_change || 'Invitation Response'}`,
-      subtitle: isAccepted ? 'Great news! Someone accepted your invitation.' : 
-                isDeclined ? 'Invitation Response Update' : 
-                'Collaboration Invitation Update',
+      subtitle: isAccepted ? 'Great news! Someone accepted your invitation.' : isDeclined ? 'Invitation Response Update' : 'Collaboration Invitation Update',
       content: `
         <h2 style="color: #1f2937; margin-top: 0; font-size: 20px; font-weight: 600; font-family: Arial, sans-serif;">
-          ${isAccepted ? 'Great news! Someone accepted your invitation.' : 
-            isDeclined ? 'Invitation Response Update' : 
-            'Collaboration Invitation Update'}
+          ${isAccepted ? 'Great news! Someone accepted your invitation.' : isDeclined ? 'Invitation Response Update' : 'Collaboration Invitation Update'}
         </h2>
         ${contentBox}
         <p style="color: #4b5563; font-size: 15px; margin-top: 30px; font-family: Arial, sans-serif;">
-          ${isAccepted ? 
-            `The collaborator has accepted your invitation and can now help with planning "${data.event_name || 'this event'}".` :
-            isDeclined ? 
-            `The collaborator has declined your invitation for "${data.event_name || 'this event'}".` :
-            data.status_description || 'This is an automated notification regarding the collaboration invitation for your event.'}
+          ${isAccepted ? `The collaborator has accepted your invitation and can now help with planning "${data.event_name || 'this event'}".` : isDeclined ? `The collaborator has declined your invitation for "${data.event_name || 'this event'}".` : data.status_description || 'This is an automated notification regarding the collaboration invitation for your event.'}
         </p>
       `,
       preheader: `Invitation ${data.status_change || 'response'} for ${data.event_name || 'event'}`,
-      buttons: [{
-        text: isAccepted ? 'View Event & Collaborate' : 
-              isDeclined ? 'View Event Details' : 
-              'View Event Details',
-        url: data.accept_url || '#',
-        color: buttonColor
-      }],
+      buttons: [
+        {
+          text: isAccepted ? 'View Event & Collaborate' : isDeclined ? 'View Event Details' : 'View Event Details',
+          url: data.accept_url || '#',
+          color: buttonColor
+        }
+      ],
       headerColor: headerColor,
       buttonColor: buttonColor
     });
   },
-  
-  vendor: (data) => {
+  vendor: (data)=>{
     const contentBox = `
       <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background-color: #f0fdf4; border-left: 4px solid #059669; margin: 20px 0;">
         <tr>
@@ -564,7 +571,6 @@ const emailTemplates = {
         </tr>
       </table>
     `;
-
     return createUniversalEmail({
       title: "🎉 Event Invitation",
       subtitle: "You're invited to participate!",
@@ -590,158 +596,198 @@ const emailTemplates = {
       buttonColor: "#059669"
     });
   }
-}
-
-serve(async (req) => {
+};
+serve(async (req)=>{
+  const origin = req.headers.get('origin')
+  const corsHeaders = getCorsHeaders(origin)
+  
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
+    return new Response('ok', {
+      headers: corsHeaders
+    });
   }
-
   try {
-    const requestBody = await req.json()
-
-    const {
-      email,
-      notification_type,
-      event_id,
-      event_name,
-      // Common fields
-      inviter_name,
-      assigner_name,
-      sender_name,
-      updated_by,
-      // Task specific
-      task_title,
-      task_description,
-      due_date,
-      priority,
-      task_assignment_token,
-      assignment_token,
-      // Invitation specific
-      invitation_token,
-      invitation_url,
-      permission_level,
-      // Chat specific
-      message_preview,
-      // Event update specific
-      update_description,
-      // Status specific
-      status_change,
-      status_description,
-      // Vendor specific
-      vendor_name,
-      accept_url,
-      decline_url
-    } = requestBody
-
+    const requestBody = await req.json();
+    const { email, notification_type, event_id, event_name, // Common fields
+    inviter_name, assigner_name, sender_name, updated_by, // Task specific
+    task_title, task_description, due_date, priority, task_assignment_token, assignment_token, // Invitation specific
+    invitation_token, invitation_url, permission_level, // Chat specific
+    message_preview, // Event update specific
+    update_description, // Status specific
+    status_change, status_description, // Vendor specific
+    vendor_name, accept_url, decline_url } = requestBody;
     // Validate required fields
     if (!email || !notification_type) {
-      throw new Error('Missing required fields: email, notification_type')
+      throw new Error('Missing required fields: email, notification_type');
     }
-
     // Get handler for notification type
-    const handler = notificationHandlers[notification_type]
+    const handler = notificationHandlers[notification_type];
     if (!handler) {
-      throw new Error(`Unsupported notification type: ${notification_type}`)
+      throw new Error(`Unsupported notification type: ${notification_type}`);
     }
-
     // Generate URLs based on notification type - CORRECTED ROUTES WITH PROPER TABS
-    let acceptUrl = ''
+    // Using the current production Vercel URL
+    const baseUrl = 'https://revayahost.com';
+    let acceptUrl = '';
     if (notification_type === 'task_assigned') {
-      const token = task_assignment_token || assignment_token
+      const token = task_assignment_token || assignment_token;
       // Route to task response page where user can accept/decline
-      acceptUrl = `https://revayahost.com/#/task-response?token=${token}`
+      acceptUrl = `${baseUrl}/#/task-response?token=${token}`;
     } else if (notification_type === 'task_updated') {
       // Route to event detail page, tasks tab to see the updated task
-      acceptUrl = `https://revayahost.com/#/event/view/${event_id}?tab=tasks`
+      acceptUrl = `${baseUrl}/#/event/view/${event_id}?tab=tasks`;
     } else if (notification_type === 'task_completed') {
       // Route to event detail page, tasks tab to see completed task
-      acceptUrl = `https://revayahost.com/#/event/view/${event_id}?tab=tasks`
+      acceptUrl = `${baseUrl}/#/event/view/${event_id}?tab=tasks`;
     } else if (notification_type === 'collaborator_invitation') {
       // Route to collaborator invitation response page
-      acceptUrl = invitation_url || `https://revayahost.com/#/collaborator-invite-response?token=${invitation_token}`
+      acceptUrl = invitation_url || `${baseUrl}/#/collaborator-invite-response?token=${invitation_token}`;
     } else if (notification_type === 'chat_message') {
       // Route to event detail page, chat/messages tab
-      acceptUrl = `https://revayahost.com/#/event/view/${event_id}?tab=chat`
+      acceptUrl = `${baseUrl}/#/event/view/${event_id}?tab=chat`;
     } else if (notification_type === 'event_updated') {
       // Route to event detail page (defaults to overview tab)
-      acceptUrl = `https://revayahost.com/#/event/view/${event_id}`
+      acceptUrl = `${baseUrl}/#/event/view/${event_id}`;
     } else if (notification_type === 'collaborator_status_changed') {
       // Route to event detail page, collaborators tab to see status
-      acceptUrl = `https://revayahost.com/#/event/view/${event_id}?tab=collaborators`
+      acceptUrl = `${baseUrl}/#/event/view/${event_id}?tab=collaborators`;
     } else if (notification_type === 'vendor_invitation') {
       // Use provided URL or default to event detail
-      acceptUrl = accept_url || `https://revayahost.com/#/event/view/${event_id}`
+      acceptUrl = accept_url || `${baseUrl}/#/event/view/${event_id}`;
     }
-
-    // Generate subject and HTML content
-    const subject = handler.subject(requestBody)
-    const template = emailTemplates[handler.template]
+    // Get or generate unsubscribe token for recipient
+    // First try to find user by email in profiles table
+    const supabaseUrl = Deno.env.get('SUPABASE_URL') || 'https://drhzvzimmmdbsvwhlsxm.supabase.co'
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+    let unsubscribeLink = ''
     
+    if (supabaseServiceKey) {
+      try {
+        const supabase = createClient(supabaseUrl, supabaseServiceKey)
+        
+        // Try to find profile by email
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('id, unsubscribe_token, unsubscribed_at')
+          .eq('email', email)
+          .maybeSingle()
+        
+        // Check if user is unsubscribed (only skip marketing emails, not transactional)
+        // For notification emails, we still send them but don't include unsubscribe link if unsubscribed
+        if (profile) {
+          if (!profile.unsubscribed_at) {
+            // Generate token if it doesn't exist
+            let unsubscribeToken = profile.unsubscribe_token
+            if (!unsubscribeToken) {
+              unsubscribeToken = crypto.randomUUID()
+              await supabase
+                .from('profiles')
+                .update({ unsubscribe_token: unsubscribeToken })
+                .eq('id', profile.id)
+            }
+            unsubscribeLink = `https://mrjnkoijfrbsapykgfwj.supabase.co/functions/v1/unsubscribe?token=${unsubscribeToken}`
+          }
+        } else {
+          // If no profile found, try contacts table (if it exists)
+          // For now, we'll skip unsubscribe link for non-users
+          // In future, could add contacts table support
+        }
+      } catch (error) {
+        console.error('⚠️ Error getting unsubscribe token:', error)
+        // Continue without unsubscribe link - not critical
+      }
+    }
+    
+    // Generate subject and HTML content
+    const subject = handler.subject(requestBody);
+    const template = emailTemplates[handler.template];
     // Debug: Log the data being passed to the template
-    const templateData = { 
-      ...requestBody, 
+    const templateData = {
+      ...requestBody,
       accept_url: acceptUrl,
       decline_url: decline_url || acceptUrl // Use acceptUrl as fallback for decline
     };
     
-    const htmlContent = template(templateData)
-
+    // Get base HTML from template
+    let htmlContent = template(templateData);
+    
+    // If template uses createUniversalEmail, we need to inject unsubscribe link
+    // Since templates already call createUniversalEmail, we need to modify the approach
+    // For now, we'll append unsubscribe footer to all notification emails
+    if (unsubscribeLink) {
+      // Extract footer section and add unsubscribe link
+      // This is a simple approach - in production you might want to refactor templates
+      htmlContent = htmlContent.replace(
+        '</body>',
+        `
+        <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
+            <tr>
+                <td align="center" style="padding: 20px; background-color: #f9fafb;">
+                    <p style="margin: 0; font-size: 12px; color: #6b7280; text-align: center; font-family: Arial, sans-serif;">
+                        <a href="${unsubscribeLink}" style="color:#64748B;text-decoration:underline;">Unsubscribe</a>
+                        &nbsp;•&nbsp;
+                        <a href="https://www.revayahost.com/#/preferences" style="color:#64748B;text-decoration:underline;">Manage preferences</a>
+                        <br><br>
+                        Revaya Hospitality Group LLC • 407 Lincoln Road, Ste 6H, Miami Beach, FL 33139 • 
+                        <a href="mailto:info@revayahg.com" style="color:#64748B;text-decoration:underline;">info@revayahg.com</a>
+                    </p>
+                </td>
+            </tr>
+        </table>
+        </body>`
+      )
+    }
     console.log('📨 Sending email:', {
       to: email,
       type: notification_type,
       subject,
       hasTemplate: !!template
-    })
-
+    });
     // Send email via Resend
     const emailResponse = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${RESEND_API_KEY}`,
-        'Content-Type': 'application/json',
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({
         from: 'Revaya Host <info@revayahg.com>',
-        to: [email],
+        to: [
+          email
+        ],
         subject: subject,
-        html: htmlContent,
-      }),
-    })
-
+        html: htmlContent
+      })
+    });
     if (!emailResponse.ok) {
-      const errorText = await emailResponse.text()
-      console.error('❌ Resend API error:', errorText)
-      throw new Error(`Failed to send email: ${emailResponse.status} - ${errorText}`)
+      const errorText = await emailResponse.text();
+      console.error('❌ Resend API error:', errorText);
+      throw new Error(`Failed to send email: ${emailResponse.status} - ${errorText}`);
     }
-
-    const result = await emailResponse.json()
-    console.log('✅ Email sent successfully:', result.id)
-
-    return new Response(
-      JSON.stringify({ 
-        success: true, 
-        id: result.id,
-        notification_type,
-        email_sent_to: email
-      }),
-      {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200,
-      }
-    )
-
+    const result = await emailResponse.json();
+    console.log('✅ Email sent successfully:', result.id);
+    return new Response(JSON.stringify({
+      success: true,
+      id: result.id,
+      notification_type,
+      email_sent_to: email
+    }), {
+      headers: {
+        ...corsHeaders,
+        'Content-Type': 'application/json'
+      },
+      status: 200
+    });
   } catch (error) {
-    console.error('❌ Function error:', error)
-    
-    return new Response(
-      JSON.stringify({ 
-        error: error.message
-      }),
-      {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 400,
-      }
-    )
+    console.error('❌ Function error:', error);
+    return new Response(JSON.stringify({
+      error: error.message
+    }), {
+      headers: {
+        ...corsHeaders,
+        'Content-Type': 'application/json'
+      },
+      status: 400
+    });
   }
-})
+});

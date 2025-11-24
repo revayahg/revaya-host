@@ -11,6 +11,7 @@ function EditEventForm({ eventId }) {
       // ── Permissions: owners & editors can manage collaborators
       const [canManageCollaborators, setCanManageCollaborators] = React.useState(false);
       const [permissionsReady, setPermissionsReady] = React.useState(false);
+      const [userRole, setUserRole] = React.useState(null);
 
       React.useEffect(() => {
         let cancelled = false;
@@ -20,6 +21,7 @@ function EditEventForm({ eventId }) {
           if (event.user_id === user.id) {
             if (!cancelled) {
               setCanManageCollaborators(true);
+              setUserRole('owner');
               setPermissionsReady(true);
             }
             return;
@@ -34,12 +36,15 @@ function EditEventForm({ eventId }) {
               .limit(1);
             if (!cancelled) {
               const r = rows && rows[0];
-              setCanManageCollaborators(!!r && r.role === 'editor' && (r.status ?? 'active') === 'active');
+              const isEditor = !!r && r.role === 'editor' && (r.status ?? 'active') === 'active';
+              setCanManageCollaborators(isEditor);
+              setUserRole(isEditor ? 'editor' : (r ? r.role : 'viewer'));
               setPermissionsReady(true);
             }
           } catch {
             if (!cancelled) {
               setCanManageCollaborators(false);
+              setUserRole('viewer');
               setPermissionsReady(true);
             }
           }
@@ -54,6 +59,17 @@ function EditEventForm({ eventId }) {
     const [collaborators, setCollaborators] = React.useState([]);
     const [pendingInvitations, setPendingInvitations] = React.useState([]);
     const [loadingCollaborators, setLoadingCollaborators] = React.useState(false);
+
+    const handleNumberWheel = (event) => {
+      event.preventDefault();
+      const target = event.currentTarget;
+      target.blur();
+      if (typeof window !== 'undefined' && window.requestAnimationFrame) {
+        window.requestAnimationFrame(() => target.focus());
+      } else {
+        setTimeout(() => target.focus(), 0);
+      }
+    };
 
     const cleanEventId = React.useMemo(() => {
       if (!eventId) return null;
@@ -122,7 +138,7 @@ function EditEventForm({ eventId }) {
       const checkTabParam = () => {
         const urlParams = new URLSearchParams(window.location.search);
         const tabParam = urlParams.get('tab');
-        if (tabParam && ['basics', 'budget', 'tasks', 'collaborators', 'event-chat'].includes(tabParam)) {
+        if (tabParam && ['basics', 'budget', 'tasks', 'collaborators', 'event-chat', 'staff'].includes(tabParam)) {
           setActiveTab(tabParam);
         }
       };
@@ -424,6 +440,12 @@ function EditEventForm({ eventId }) {
         const lastDate = schedule.length > 0 ? schedule[schedule.length - 1].date : 
           (formData.end_date || formData.start_date);
         
+        const parseIntegerField = (value) => {
+          if (value === '' || value === null || typeof value === 'undefined') return null;
+          const parsedValue = parseInt(value, 10);
+          return Number.isNaN(parsedValue) ? null : parsedValue;
+        };
+
         // FIXED: Map form fields to database schema with correct field names
         const updateData = {
           name: formData.name || formData.title, // Map title to name field
@@ -433,8 +455,8 @@ function EditEventForm({ eventId }) {
           location: formData.location,
           event_type: formData.event_type,
           event_time: startT && endT ? `${startT} - ${endT}` : '', // Normalized time range
-          expected_attendance: formData.expected_attendance ? parseInt(formData.expected_attendance, 10) : null, // FIXED: Use correct field name and convert to integer
-          support_staff_needed: formData.support_staff_needed ? parseInt(formData.support_staff_needed, 10) : null,
+          expected_attendance: parseIntegerField(formData.expected_attendance), // FIXED: Use correct field name and convert to integer
+          support_staff_needed: parseIntegerField(formData.support_staff_needed),
           budget: formData.budget_max ? `$${formData.budget_min || 0} - $${formData.budget_max}` : formData.budget,
           status: formData.status || 'draft',
           is_public: formData.is_public !== false,
@@ -659,7 +681,8 @@ function EditEventForm({ eventId }) {
               ['budget', 'Budget'],
               ['tasks', 'Tasks'],
               ['collaborators', 'Collaborators'],
-              ['event-chat', 'Event Chat']
+              ['event-chat', 'Event Chat'],
+              ['staff', 'Staff']
             ].map(([tab, label]) => React.createElement('button', {
               key: `tab-${tab}`,
               onClick: () => setActiveTab(tab),
@@ -729,7 +752,8 @@ function EditEventForm({ eventId }) {
                     type: 'number',
                     value: formData.expected_attendance || '',
                     onChange: (e) => handleInputChange('expected_attendance', e.target.value),
-                    className: 'w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500',
+                    onWheel: handleNumberWheel,
+                    className: 'w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 no-spinner',
                     placeholder: 'Number of attendees'
                   })
                 ]),
@@ -739,9 +763,10 @@ function EditEventForm({ eventId }) {
                   React.createElement('input', {
                     key: 'support-staff-input',
                     type: 'number',
-                    value: formData.support_staff_needed || '',
+                    value: formData.support_staff_needed ?? '',
                     onChange: (e) => handleInputChange('support_staff_needed', e.target.value),
-                    className: 'w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500',
+                    onWheel: handleNumberWheel,
+                    className: 'w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 no-spinner',
                     placeholder: 'Number of staff needed'
                   })
                 ])
@@ -771,7 +796,7 @@ function EditEventForm({ eventId }) {
                   React.createElement('p', {
                     key: 'icon-help-text',
                     className: 'text-xs text-gray-500 mt-1'
-                  }, 'Accepted formats: JPG, PNG, GIF, WebP (Max size: 5MB)'),
+                  }, 'Accepted formats: JPG, PNG, GIF, SVG, WebP, BMP, TIFF, ICO (Max size: 5MB)'),
                   
                   // Icon preview
                   formData.logo && React.createElement('div', {
@@ -814,7 +839,7 @@ function EditEventForm({ eventId }) {
                   React.createElement('p', {
                     key: 'map-help-text',
                     className: 'text-xs text-gray-500 mt-1'
-                  }, 'Accepted formats: JPG, PNG, GIF, WebP (Max size: 5MB)'),
+                  }, 'Accepted formats: JPG, PNG, GIF, SVG, WebP, BMP, TIFF, ICO (Max size: 5MB)'),
                   
                   // Map preview
                   formData.event_map && React.createElement('div', {
@@ -1076,6 +1101,32 @@ function EditEventForm({ eventId }) {
               key: 'event-chat-panel',
               eventId: cleanEventId,
               currentUser: user
+            })
+          ]),
+          activeTab === 'staff' && React.createElement('div', { 
+            key: 'staff-tab',
+            className: 'p-6'
+          }, [
+            React.createElement('div', { 
+              key: 'staff-header',
+              className: 'mb-6'
+            }, [
+              React.createElement('h3', { 
+                key: 'staff-title', 
+                className: 'text-xl font-semibold flex items-center gap-2 mb-2'
+              }, [
+                React.createElement('div', { key: 'staff-icon', className: 'icon-users text-xl' }),
+                'Staff Management'
+              ]),
+              React.createElement('p', { 
+                key: 'staff-description',
+                className: 'text-gray-600'
+              }, 'Manage event staff assignments, roles, and contact information')
+            ]),
+            React.createElement(window.StaffManager, {
+              key: 'staff-manager',
+              eventId: cleanEventId,
+              userRole: userRole
             })
           ])
         ].filter(Boolean)

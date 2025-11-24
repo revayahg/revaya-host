@@ -378,6 +378,80 @@ function VendorEventView({ eventId }) {
                     key: 'main-column',
                     className: 'lg:col-span-2 space-y-6'
                 }, [
+                    // Days Until Event Section
+                    (event.start_date || event.end_date || event.date) && React.createElement('div', {
+                        key: 'days-until-event-section',
+                        className: 'bg-gradient-to-br from-emerald-500 via-teal-500 to-cyan-500 rounded-xl shadow-lg p-4 lg:p-5 relative overflow-hidden transform hover:scale-105 transition-all duration-300'
+                    }, [
+                        // Background decoration
+                        React.createElement('div', {
+                            key: 'bg-decoration',
+                            className: 'absolute inset-0 bg-gradient-to-br from-white/10 to-transparent'
+                        }),
+                        React.createElement('div', {
+                            key: 'bg-pattern',
+                            className: 'absolute top-0 right-0 w-20 h-20 bg-white/5 rounded-full -translate-y-10 translate-x-10'
+                        }),
+                        React.createElement('div', {
+                            key: 'bg-pattern-2',
+                            className: 'absolute bottom-0 left-0 w-16 h-16 bg-white/5 rounded-full translate-y-8 -translate-x-8'
+                        }),
+                        
+                        // Main content
+                        React.createElement('div', {
+                            key: 'days-counter-container',
+                            className: 'relative z-10 flex flex-col items-center justify-center text-center'
+                        }, [
+                            // Calendar icon
+                            React.createElement('div', {
+                                key: 'calendar-icon',
+                                className: 'mb-2 p-2 bg-white/20 rounded-full backdrop-blur-sm'
+                            }, React.createElement('div', {
+                                className: 'icon-calendar text-lg text-white'
+                            })),
+                            
+                            // Days counter
+                            React.createElement('div', {
+                                key: 'days-counter',
+                                className: 'mb-1'
+                            }, [
+                                React.createElement('div', {
+                                    key: 'days-number',
+                                    className: 'text-3xl lg:text-4xl font-black text-white mb-1 drop-shadow-lg tracking-tight'
+                                }, (() => {
+                                    const eventDate = new Date(event.end_date || event.start_date || event.date);
+                                    const today = new Date();
+                                    const diffTime = eventDate - today;
+                                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                                    
+                                    if (diffDays < 0) return `${Math.abs(diffDays)} days ago`;
+                                    if (diffDays === 0) return 'Today';
+                                    if (diffDays === 1) return 'Tomorrow';
+                                    return `${diffDays} days`;
+                                })())
+                            ]),
+                            
+                            // Event date with enhanced styling
+                            React.createElement('div', {
+                                key: 'event-date',
+                                className: 'mt-2 px-3 py-1 bg-white/20 rounded-full backdrop-blur-sm border border-white/30'
+                            }, React.createElement('div', {
+                                className: 'text-xs lg:text-sm font-medium text-white flex items-center'
+                            }, [
+                                React.createElement('div', {
+                                    key: 'date-icon',
+                                    className: 'icon-clock text-xs mr-1'
+                                }),
+                                `Event Date: ${new Date(event.end_date || event.start_date || event.date).toLocaleDateString('en-US', { 
+                                    weekday: 'long', 
+                                    year: 'numeric', 
+                                    month: 'long', 
+                                    day: 'numeric' 
+                                })}`
+                            ]))
+                        ])
+                    ]),
+
                     // About Section
                     (event.about || event.description) && React.createElement('div', {
                         key: 'about-section',
@@ -503,7 +577,7 @@ function VendorEventView({ eventId }) {
                                 React.createElement('p', {
                                     key: 'support-staff-value',
                                     className: 'font-medium'
-                                }, event.support_staff_needed || 'Not specified')
+                                }, event.support_staff_needed ?? 'Not specified')
                             ]),
                             React.createElement('div', {
                                 key: 'type'

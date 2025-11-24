@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Revaya Host – Plan Exceptional Events, Seamlessly</title>
-    <!-- Cache bust: 2025-01-18-infinite-recursion-fix -->
+        <!-- Cache bust: 2025-01-23-start-date-task-feature-v4-force-edge-redeploy -->
     <meta name="description" content="Powerful event management software for producers and hospitality teams planning galas, festivals, and conferences.">
     <meta name="keywords" content="event planning, vendors, catering, entertainment, photography">
     <meta property="og:title" content="Revaya Host – Plan Exceptional Events, Seamlessly">
@@ -12,27 +12,154 @@
     <meta name="twitter:title" content="Revaya Host – Plan Exceptional Events, Seamlessly">
     <meta name="twitter:description" content="Powerful event management software for producers and hospitality teams planning galas, festivals, and conferences.">
 
-    <!-- Content Security Policy - Temporarily relaxed for debugging -->
-    <!-- <meta http-equiv="Content-Security-Policy" content="
+    <!-- Content Security Policy - Secure Configuration -->
+    <meta http-equiv="Content-Security-Policy" content="
         default-src 'self';
         script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://cdn.tailwindcss.com;
         style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com https://resource.trickle.so https://cdn.tailwindcss.com;
         font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com https://resource.trickle.so;
         img-src 'self' data: https: blob:;
-        connect-src 'self' https://*.supabase.co https://*.supabase.io wss://*.supabase.co https://unpkg.com https://cdn.jsdelivr.net https://cdn.tailwindcss.com;
-        frame-src 'self';
+        connect-src 'self' https://*.supabase.co https://*.supabase.io wss://*.supabase.co https://api.openai.com https://unpkg.com https://cdn.jsdelivr.net https://geocode.maps.co https://photon.komoot.io https://nominatim.openstreetmap.org;
+        frame-src 'none';
         object-src 'none';
         base-uri 'self';
         form-action 'self';
-    "> -->
+        upgrade-insecure-requests;
+        block-all-mixed-content;
+    ">
+
+    <script>
+      (function() {
+        function guardObserver(Constructor) {
+          if (typeof Constructor !== 'function') {
+            return Constructor;
+          }
+
+          if (Constructor && Constructor.__revayaGuardedCtor) {
+            return Constructor;
+          }
+
+          class GuardedObserver extends Constructor {
+            observe(target, options) {
+              if (!target || typeof target.nodeType !== 'number') {
+                console.warn('Skipping MutationObserver.observe because target is not a Node:', target);
+                return;
+              }
+              return super.observe(target, options);
+            }
+          }
+
+          Object.getOwnPropertyNames(Constructor).forEach((key) => {
+            if (key === 'prototype') return;
+            try {
+              GuardedObserver[key] = Constructor[key];
+            } catch (error) {
+              // ignore read-only props
+            }
+          });
+
+          Object.defineProperty(GuardedObserver, '__revayaGuardedCtor', {
+            value: true,
+            configurable: false,
+            enumerable: false,
+            writable: false
+          });
+
+          return GuardedObserver;
+        }
+
+        function patchPrototype(name) {
+          const Constructor = window[name];
+          if (typeof Constructor !== 'function') {
+            return;
+          }
+
+          const proto = Constructor.prototype;
+          if (!proto) {
+            return;
+          }
+
+          const originalObserve = proto.observe;
+          if (typeof originalObserve !== 'function' || originalObserve.__revayaGuarded) {
+            return;
+          }
+
+          function guardedObserve(target, options) {
+            try {
+              if (!target || typeof target.nodeType !== 'number') {
+                console.warn('Skipping MutationObserver.observe because target is not a Node:', target);
+                return;
+              }
+              return originalObserve.call(this, target, options);
+            } catch (error) {
+              if (error && error.message && error.message.includes(\"MutationObserver\")) {
+                console.warn('Suppressing MutationObserver observe error:', error.message);
+                return;
+              }
+              throw error;
+            }
+          }
+
+          Object.defineProperty(guardedObserve, '__revayaGuarded', {
+            value: true,
+            configurable: false,
+            enumerable: false
+          });
+
+          Object.defineProperty(proto, 'observe', {
+            value: guardedObserve,
+            configurable: false,
+            enumerable: false,
+            writable: false
+          });
+        }
+
+        if (window.MutationObserver) {
+          window.MutationObserver = guardObserver(window.MutationObserver);
+        }
+        if (window.WebKitMutationObserver) {
+          window.WebKitMutationObserver = guardObserver(window.WebKitMutationObserver);
+        }
+
+        patchPrototype('MutationObserver');
+        patchPrototype('WebKitMutationObserver');
+
+        window.addEventListener('DOMContentLoaded', function() {
+          if (window.MutationObserver) {
+            window.MutationObserver = guardObserver(window.MutationObserver);
+          }
+          if (window.WebKitMutationObserver) {
+            window.WebKitMutationObserver = guardObserver(window.WebKitMutationObserver);
+          }
+          patchPrototype('MutationObserver');
+          patchPrototype('WebKitMutationObserver');
+        });
+
+        // Re-apply guard periodically in case other scripts overwrite observe
+        setInterval(function() {
+          if (window.MutationObserver) {
+            window.MutationObserver = guardObserver(window.MutationObserver);
+          }
+          if (window.WebKitMutationObserver) {
+            window.WebKitMutationObserver = guardObserver(window.WebKitMutationObserver);
+          }
+          patchPrototype('MutationObserver');
+          patchPrototype('WebKitMutationObserver');
+        }, 2000);
+      })();
+    </script>
 
     <!-- React and Babel -->
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
-    <!-- Environment Configuration -->
+    <!-- Environment Config (sets window.SUPABASE_CONFIG, URL, ANON KEY) -->
     <script src="config/environment.js"></script>
+    <!-- Error Messages Utility -->
+    <script src="utils/core/errorMessages.js"></script>
+    <!-- Input Sanitization Utility -->
+    <script src="utils/validation/inputSanitizer.js"></script>
     <script>
       // Override with environment-specific values
       window.SUPABASE_URL = window.SUPABASE_CONFIG.url;
@@ -44,27 +171,29 @@
     <!-- Load the UMD bundle so `supabase` is global -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
     <!-- Then your client helper -->
-    <script src="utils/supabaseClient.js"></script>
+    <script src="utils/core/supabaseClient.js"></script>
     <!-- Enhanced logout guard to prevent post-logout errors -->
-    <script src="utils/logoutGuard.js"></script>
+    <script src="utils/auth/logoutGuard.js"></script>
     <!-- Enhanced hot-patch fixes for logout errors and role synchronization -->
-    <script src="utils/hotPatchFixes.js"></script>
+    <script src="utils/development/hotPatchFixes.js"></script>
     
     <!-- Universal Email Template -->
-    <script src="utils/universalEmailTemplate.js"></script>
+    <script src="utils/email/universalEmailTemplate.js"></script>
     
     <!-- Unified Notification Service -->
-    <script src="utils/unifiedNotificationService.js"></script>
+    <script src="utils/email/unifiedNotificationService.js"></script>
     <!-- Email Reminder Service -->
-    <script src="utils/emailReminderService.js"></script>
+    <script src="utils/email/emailReminderService.js"></script>
+    <!-- Unsubscribe Footer Helper -->
+    <script src="utils/email/unsubscribeFooter.js"></script>
     
     <!-- Development Email Mock System -->
-    <script src="utils/developmentEmailMock.js"></script>
-    <script src="utils/emailInterceptor.js"></script>
+    <script src="utils/development/developmentEmailMock.js"></script>
+    <script src="utils/email/emailInterceptor.js"></script>
     
     
     <!-- User Profile Functions -->
-    <script src="utils/getCurrentUser.js"></script>
+    <script src="utils/auth/getCurrentUser.js"></script>
 
     <!-- Suppress Development Warnings -->
     <script>
@@ -150,10 +279,13 @@
 <body>
     <div id="root">
         <!-- Fallback loading UI until React initializes -->
-        <div style="min-height: 100vh; display: flex; align-items: center; justify-content: center; background-color: #f9fafb;">
+        <div id="initial-loading" style="min-height: 100vh; display: flex; align-items: center; justify-content: center; background-color: #f9fafb; position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 9999;">
             <div style="text-align: center;">
                 <div style="width: 48px; height: 48px; border: 3px solid #e5e7eb; border-top: 3px solid #4f46e5; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 16px;"></div>
-                <p style="color: #6b7280; font-family: system-ui, sans-serif;">Loading Revaya Host...</p>
+                <p id="loading-text" style="color: #6b7280; font-family: system-ui, sans-serif;">Loading Revaya Host...</p>
+                <div id="loading-progress" style="width: 200px; height: 4px; background: #e5e7eb; border-radius: 2px; margin: 16px auto 0; overflow: hidden;">
+                    <div id="loading-bar" style="width: 0%; height: 100%; background: #4f46e5; transition: width 0.3s ease;"></div>
+                </div>
             </div>
         </div>
         <style>
@@ -163,6 +295,53 @@
             }
         </style>
     </div>
+
+    <!-- Loading Progress Tracker -->
+    <script>
+        (function() {
+            let loadedScripts = 0;
+            const totalScripts = document.querySelectorAll('script[type="text/babel"]').length;
+            const loadingBar = document.getElementById('loading-bar');
+            const loadingText = document.getElementById('loading-text');
+            
+            function updateProgress() {
+                loadedScripts++;
+                const progress = Math.min(95, Math.round((loadedScripts / totalScripts) * 90));
+                if (loadingBar) loadingBar.style.width = progress + '%';
+                if (loadingText && progress < 90) {
+                    loadingText.textContent = `Loading scripts... ${progress}%`;
+                }
+            }
+            
+            // Monitor script loading
+            const observer = new MutationObserver(function(mutations) {
+                mutations.forEach(function(mutation) {
+                    mutation.addedNodes.forEach(function(node) {
+                        if (node.tagName === 'SCRIPT' && node.type === 'text/babel') {
+                            node.addEventListener('load', updateProgress);
+                            node.addEventListener('error', updateProgress);
+                        }
+                    });
+                });
+            });
+            
+            observer.observe(document.head, { childList: true, subtree: true });
+            
+            // Hide loading screen when DOM is ready and scripts are loaded
+            window.addEventListener('load', function() {
+                setTimeout(function() {
+                    const loadingEl = document.getElementById('initial-loading');
+                    if (loadingEl) {
+                        loadingEl.style.opacity = '0';
+                        loadingEl.style.transition = 'opacity 0.5s ease';
+                        setTimeout(function() {
+                            loadingEl.style.display = 'none';
+                        }, 500);
+                    }
+                }, 500);
+            });
+        })();
+    </script>
 
     <!-- Global scroll restoration disable -->
     <script>
@@ -191,44 +370,47 @@
     </script>
 
     <!-- Error Reporting -->
-    <script src="utils/errorReporting.js" type="text/babel"></script>
+    <script src="utils/core/errorReporting.js" type="text/babel"></script>
 
 
 
     <!-- Utilities -->
-    <script src="utils/mediaHelpers.js"></script>
-    <script src="utils/environment.js" type="text/babel"></script>
-    <script src="utils/eventBus.js" type="text/babel"></script>
-    <script src="utils/auth.js" type="text/babel"></script>
-    <script src="utils/getUser.js" type="text/babel"></script>
-    <script src="utils/api.js" type="text/babel"></script>
-    <script src="utils/vendorAPI.js" type="text/babel"></script>
-    <script src="utils/toast.js" type="text/babel"></script>
-    <script src="utils/validation.js" type="text/babel"></script>
-    <script src="utils/fileUtils.js" type="text/babel"></script>
-    <script src="utils/encryption.js" type="text/babel"></script>
-    <script src="utils/privacy.js" type="text/babel"></script>
-    <script src="utils/dataVerification.js" type="text/babel"></script>
-    <script src="utils/mockData.js" type="text/babel"></script>
-    <script src="utils/eventUtils.js" type="text/babel"></script>
-    <script src="utils/dateUtils.js" type="text/babel"></script>
-    <script src="utils/EVENT_TYPES.js" type="text/babel"></script>
-    <script src="utils/VENDOR_CATEGORIES.js" type="text/babel"></script>
-    <script src="utils/database.js" type="text/babel"></script>
-    <script src="utils/vendorValidation.js" type="text/babel"></script>
-    <script src="utils/imageUtils.js" type="text/babel"></script>
-    <script src="utils/vendorProfileAPI.js" type="text/babel"></script>
-    <script src="utils/eventVendorAPI.js" type="text/babel"></script>
-    <script src="utils/taskAPI.js" type="text/babel"></script>
-    <script src="utils/pinAPI.js" type="text/babel"></script>
-    <script src="utils/invitationEmailService.js" type="text/babel"></script>
-    <script src="utils/parseEmails.js" type="text/babel"></script>
-    <script src="utils/collaboratorAPI.js?v=2025-01-19-23-30-emergency-fix" type="text/babel"></script>
-    <script src="utils/getUserVendorProfiles.js" type="text/babel"></script>
-    <script src="utils/budgetAPI.js" type="text/babel"></script>
-    <script src="utils/eventAPI.js" type="text/babel"></script>
-    <script src="utils/knowledgeBaseAPI.js" type="text/babel"></script>
-    <script src="utils/notificationAPI.js" type="text/babel"></script>
+    <script src="utils/media/mediaHelpers.js"></script>
+    <script src="utils/core/environment.js" type="text/babel"></script>
+    <script src="utils/core/eventBus.js" type="text/babel"></script>
+    <script src="utils/auth/auth.js" type="text/babel"></script>
+    <script src="utils/auth/getUser.js" type="text/babel"></script>
+    <script src="utils/core/api.js" type="text/babel"></script>
+    <script src="utils/api/vendorAPI.js" type="text/babel"></script>
+    <script src="utils/core/toast.js" type="text/babel"></script>
+    <script src="utils/validation/validation.js" type="text/babel"></script>
+    <script src="utils/media/fileUtils.js" type="text/babel"></script>
+    <script src="utils/core/encryption.js" type="text/babel"></script>
+    <script src="utils/core/privacy.js" type="text/babel"></script>
+    <script src="utils/validation/dataVerification.js" type="text/babel"></script>
+    <script src="utils/development/mockData.js" type="text/babel"></script>
+    <script src="utils/core/eventUtils.js" type="text/babel"></script>
+    <script src="utils/core/notificationLinks.js" type="text/babel"></script>
+    <script src="utils/core/dateUtils.js" type="text/babel"></script>
+    <script src="utils/core/EVENT_TYPES.js" type="text/babel"></script>
+    <script src="utils/core/VENDOR_CATEGORIES.js" type="text/babel"></script>
+    <script src="utils/core/database.js" type="text/babel"></script>
+    <script src="utils/validation/vendorValidation.js" type="text/babel"></script>
+    <script src="utils/media/imageUtils.js" type="text/babel"></script>
+    <script src="utils/api/vendorProfileAPI.js" type="text/babel"></script>
+    <script src="utils/api/eventVendorAPI.js" type="text/babel"></script>
+    <script src="utils/api/taskAPI.js" type="text/babel"></script>
+    <script src="utils/api/pinAPI.js" type="text/babel"></script>
+    <script src="utils/email/invitationEmailService.js" type="text/babel"></script>
+    <script src="utils/email/parseEmails.js" type="text/babel"></script>
+    <script src="utils/api/collaboratorAPI.js?v=2025-01-19-23-30-emergency-fix" type="text/babel"></script>
+    <script src="utils/api/getUserVendorProfiles.js" type="text/babel"></script>
+    <script src="utils/api/budgetAPI.js" type="text/babel"></script>
+    <script src="utils/api/eventAPI.js" type="text/babel"></script>
+    <script src="utils/api/knowledgeBaseAPI.js" type="text/babel"></script>
+    <script src="utils/api/notificationAPI.js" type="text/babel"></script>
+    <script src="utils/ai/aiDocumentAPI.js" type="text/babel"></script>
+    <script src="utils/staffAPI.js" type="text/babel"></script>
 
     <!-- Common Components -->
     <script src="components/common/ErrorBoundary.js" type="text/babel"></script>
@@ -248,17 +430,17 @@
     <!-- Core Components -->
     <script src="components/Layout.js" type="text/babel"></script>
     <script src="components/Navigation.js" type="text/babel"></script>
-    <script src="components/Homepage.js" type="text/babel"></script>
-    <script src="components/HowItWorks.js" type="text/babel"></script>
+    <script src="components/Pages/Homepage.js" type="text/babel"></script>
+    <script src="components/Pages/HowItWorks.js" type="text/babel"></script>
 
     <!-- Auth Components -->
     <script src="components/Auth/Login.js" type="text/babel"></script>
-    <script src="components/Signup.js" type="text/babel"></script>
+    <script src="components/Auth/Signup.js" type="text/babel"></script>
     <script src="components/Auth/SignupWithInvitation.js" type="text/babel"></script>
-    <script src="components/ForgotPassword.js" type="text/babel"></script>
+    <script src="components/Auth/ForgotPassword.js" type="text/babel"></script>
     <script src="components/Settings.js" type="text/babel"></script>
-    <script src="components/AccessGate.js" type="text/babel"></script>
-    <script src="components/ThankYou.js" type="text/babel"></script>
+    <script src="components/Pages/AccessGate.js" type="text/babel"></script>
+    <script src="components/Pages/ThankYou.js" type="text/babel"></script>
 
     <!-- Profile Components -->
     <script src="components/Profile/EditProfile.js" type="text/babel"></script>
@@ -285,7 +467,6 @@
     <script src="components/Events/BudgetSummary.js" type="text/babel"></script>
     <script src="components/Events/EditBudgetForm.js" type="text/babel"></script>
     <script src="components/Events/Steps/VendorMatching.js" type="text/babel"></script>
-    <script src="components/Events/LocationAutocomplete.js" type="text/babel"></script>
     <script src="components/Events/TimePicker.js" type="text/babel"></script>
     <script src="components/Events/EventScheduleSection.js" type="text/babel"></script>
     <script src="components/Events/VendorLinking.js" type="text/babel"></script>
@@ -312,19 +493,19 @@
     <script src="components/Events/VendorPin.js" type="text/babel"></script>
     <script src="components/Events/VendorEventMap.js" type="text/babel"></script>
     <script src="components/Events/RemoveParticipantModal.js" type="text/babel"></script>
+    <!-- AI Document Analysis Components -->
+    <script src="components/Events/AIDocumentUploader.js" type="text/babel"></script>
+    <script src="components/Events/AITaskSuggestionsModal.js" type="text/babel"></script>
+    
+    <!-- Staff Management Components -->
+    <script src="components/Events/StaffManager.js" type="text/babel"></script>
     <!-- Messaging V2 -->
-    <script src="utils/messageAPIv2.js" type="text/babel"></script>
+    <script src="utils/api/messageAPIv2.js" type="text/babel"></script>
     <script src="components/Events/MessageListV2.js" type="text/babel"></script>
     <script src="components/Events/SendMessageFormV2.js" type="text/babel"></script>
     <script src="components/Events/GroupChatPanelV2.js" type="text/babel"></script>
     <script src="components/Events/ThreadListV2.js" type="text/babel"></script>
     <script src="components/Events/MessagesInboxV2.js" type="text/babel"></script>
-    <!-- (Old messaging remains disabled)
-    <script src="components/Events/NEWEventMessagesPanel.js" type="text/babel"></script>
-    <script src="components/Events/NEWSendMessageForm.js" type="text/babel"></script>
-    <script src="components/Events/NEWMessageList.js" type="text/babel"></script>
-    <script src="utils/NEWMessageAPI.js" type="text/babel"></script>
-    -->
 
     <!-- Vendor Components -->
     <script src="components/Vendors/SearchPage.js" type="text/babel"></script>
@@ -379,18 +560,20 @@
     <script src="components/KnowledgeBase/KnowledgeBaseContent.js" type="text/babel"></script>
     <script src="components/KnowledgeBase/EventTabsSection.js" type="text/babel"></script>
     <script src="components/KnowledgeBase/DocumentsListSection.js" type="text/babel"></script>
-    <script src="components/DocumentViewer.js" type="text/babel"></script>
+    <script src="components/Pages/DocumentViewer.js" type="text/babel"></script>
 
     <!-- Notification Components -->
     <script src="components/Notifications/NotificationsSection.js" type="text/babel"></script>
     <script src="components/Notifications/NotificationIntegration.js" type="text/babel"></script>
 
     <!-- Invitation Response -->
-    <script src="components/InviteResponse.js" type="text/babel"></script>
-    <script src="components/CollaboratorInviteResponse.js" type="text/babel"></script>
-    <script src="components/TaskAssignmentResponse.js" type="text/babel"></script>
-    <script src="components/ResetPassword.js" type="text/babel"></script>
-    <script src="components/PrivacyPolicy.js" type="text/babel"></script>
+    <script src="components/Auth/InviteResponse.js" type="text/babel"></script>
+    <script src="components/Auth/CollaboratorInviteResponse.js" type="text/babel"></script>
+    <script src="components/Auth/TaskAssignmentResponse.js" type="text/babel"></script>
+    <script src="components/Auth/ResetPassword.js" type="text/babel"></script>
+    <script src="components/Pages/PrivacyPolicy.js" type="text/babel"></script>
+    <script src="components/Pages/TermsOfUse.js" type="text/babel"></script>
+    <script src="components/Pages/Unsubscribed.js" type="text/babel"></script>
 
     <!-- Collaborator Components -->
     <script src="components/Events/InviteCollaboratorForm.js" type="text/babel"></script>

@@ -3,6 +3,27 @@ html, body {
   scroll-behavior: auto !important;
 }
 
+/* Drag and Drop Styles */
+.dragging {
+  opacity: 0.5;
+  transform: rotate(5deg);
+  z-index: 1000;
+}
+
+.drag-over {
+  border-color: #6366f1 !important;
+  background-color: #eef2ff !important;
+  transform: scale(1.02);
+}
+
+.drag-handle {
+  cursor: grab;
+}
+
+.drag-handle:active {
+  cursor: grabbing;
+}
+
 /* Mobile Optimizations */
 @media (max-width: 768px) {
   /* Mobile Dashboard Cards */

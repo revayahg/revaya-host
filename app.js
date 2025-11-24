@@ -273,6 +273,16 @@ function App() {
           React.createElement('div', { className: 'p-8' }, 'Loading privacy policy...');
       }
       
+      if (route === '/terms' || route === '/terms-of-use') {
+        return window.TermsOfUse ? React.createElement(window.TermsOfUse) :
+          React.createElement('div', { className: 'p-8' }, 'Loading terms of use...');
+      }
+      
+      if (route === '/unsubscribed' || route === 'unsubscribed') {
+        return window.Unsubscribed ? React.createElement(window.Unsubscribed) :
+          React.createElement('div', { className: 'p-8' }, 'Loading unsubscribed page...');
+      }
+      
       if (route === '/onboarding') {
         return window.OnboardingFlow ? React.createElement(window.OnboardingFlow) :
           React.createElement('div', { className: 'p-8' }, 'Loading onboarding...');

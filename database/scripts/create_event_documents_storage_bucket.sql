@@ -1,0 +1,57 @@
+-- Create event-documents storage bucket for AI document analysis
+-- This script should be run through Supabase Dashboard or with superuser privileges
+
+-- Note: Creating storage buckets typically requires superuser privileges
+-- or must be done through the Supabase Dashboard.
+-- 
+-- To create the bucket manually:
+-- 1. Go to Supabase Dashboard > Storage
+-- 2. Click "New bucket"
+-- 3. Configure as follows:
+--    - Name: event-documents
+--    - Public: No (private)
+--    - File size limit: 10MB
+--    - Allowed MIME types: 
+--      * application/pdf
+--      * application/vnd.openxmlformats-officedocument.wordprocessingml.document
+--      * application/vnd.ms-excel
+--      * application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+--      * image/jpeg
+--      * image/png
+--      * image/gif
+--      * image/svg+xml
+--      * image/webp
+--      * image/bmp
+--      * image/tiff
+--      * image/x-icon
+--
+-- 4. After creating the bucket, set up RLS policies:
+--    Go to Storage > Policies > event-documents bucket
+--    Add the policies from: database/scripts/create_event_documents_storage_policies.sql
+
+-- Alternative: Try creating bucket with minimal permissions (may work in some setups)
+-- INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+-- VALUES (
+--     'event-documents',
+--     'event-documents', 
+--     false, -- Private bucket
+--     10485760, -- 10MB limit
+--     ARRAY[
+--         'application/pdf',
+--         'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+--         'application/vnd.ms-excel',
+--         'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+--         'image/jpeg',
+--         'image/png',
+--         'image/gif',
+--         'image/svg+xml',
+--         'image/webp',
+--         'image/bmp',
+--         'image/tiff',
+--         'image/x-icon'
+--     ]
+-- )
+-- ON CONFLICT (id) DO NOTHING;
+
+-- Add comment for documentation
+COMMENT ON TABLE storage.buckets IS 'Storage buckets for file uploads - event-documents bucket for AI analysis';

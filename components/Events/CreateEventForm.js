@@ -32,6 +32,17 @@ function CreateEventForm({ onEventCreated }) {
   const [mapFile, setMapFile] = React.useState(null);
   const [uploading, setUploading] = React.useState(false);
 
+  const handleNumberWheel = (event) => {
+    event.preventDefault();
+    const target = event.currentTarget;
+    target.blur();
+    if (typeof window !== 'undefined') {
+      window.requestAnimationFrame(() => target.focus());
+    } else {
+      setTimeout(() => target.focus(), 0);
+    }
+  };
+
   if (!user) {
     return React.createElement(window.Login);
   }
@@ -159,19 +170,34 @@ function CreateEventForm({ onEventCreated }) {
         (formData.end_date || primaryDate);
       
 
+      // Sanitize event data for security
+      const sanitizeEventField = (value, maxLength = 10000) => {
+        if (!value || typeof value !== 'string') return value || null;
+        if (window.InputSanitizer) {
+          return window.InputSanitizer.sanitizeDescription(value, maxLength);
+        }
+        return value.trim().substring(0, maxLength);
+      };
+      
+      const parseIntegerField = (value) => {
+        if (value === '' || value === null || typeof value === 'undefined') return null;
+        const parsedValue = parseInt(value, 10);
+        return Number.isNaN(parsedValue) ? null : parsedValue;
+      };
+
       const eventData = {
-        name: formData.name || formData.title,
-        title: formData.title || formData.name,
-        event_type: formData.event_type,
-        description: formData.description || formData.about,
-        about: formData.about || formData.description,
-        location: formData.location,
+        name: sanitizeEventField(formData.name || formData.title, 200),
+        title: sanitizeEventField(formData.title || formData.name, 200),
+        event_type: sanitizeEventField(formData.event_type, 100),
+        description: sanitizeEventField(formData.description || formData.about, 10000),
+        about: sanitizeEventField(formData.about || formData.description, 10000),
+        location: sanitizeEventField(formData.location, 500),
         date: primaryDate,
         start_date: formData.start_date || primaryDate,
         end_date: lastDate,
         event_time: formData.event_time || formData.start_time,
-        expected_attendance: formData.expected_attendance ? parseInt(formData.expected_attendance, 10) : null,
-        support_staff_needed: formData.support_staff_needed ? parseInt(formData.support_staff_needed, 10) : null,
+        expected_attendance: parseIntegerField(formData.expected_attendance),
+        support_staff_needed: parseIntegerField(formData.support_staff_needed),
         budget: formData.budget_max ? 
           `$${formData.budget_min || 0} - $${formData.budget_max}` : formData.budget,
         logo: logoUrl,
@@ -348,7 +374,8 @@ function CreateEventForm({ onEventCreated }) {
               type: 'number',
               value: formData.expected_attendance,
               onChange: (e) => handleInputChange('expected_attendance', e.target.value),
-              className: 'w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500',
+              onWheel: handleNumberWheel,
+              className: 'w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 no-spinner',
               placeholder: 'Number of attendees'
             })
           ]),
@@ -361,9 +388,10 @@ function CreateEventForm({ onEventCreated }) {
             React.createElement('input', {
               key: 'support-staff-input',
               type: 'number',
-              value: formData.support_staff_needed,
+              value: formData.support_staff_needed ?? '',
               onChange: (e) => handleInputChange('support_staff_needed', e.target.value),
-              className: 'w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500',
+              onWheel: handleNumberWheel,
+              className: 'w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 no-spinner',
               placeholder: 'Number of staff needed'
             })
           ])

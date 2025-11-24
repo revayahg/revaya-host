@@ -397,6 +397,50 @@ function NotificationsSection() {
         }
     };
 
+    const applyLinkNavigation = (link) => {
+        if (!link) return false;
+        const searchParams = link.searchParams && typeof link.searchParams === 'object'
+            ? link.searchParams
+            : {};
+        const hasSearchParams = Object.keys(searchParams).length > 0;
+
+        const applySearchParams = () => {
+            if (!hasSearchParams) return;
+            try {
+                const url = new URL(window.location.href);
+                // Clear existing keys that we're about to set to prevent stale values
+                Object.keys(searchParams).forEach((key) => {
+                    const value = searchParams[key];
+                    if (value === undefined || value === null || value === '') {
+                        url.searchParams.delete(key);
+                    } else {
+                        url.searchParams.set(key, value);
+                    }
+                });
+                window.history.pushState({}, '', url.toString());
+                window.dispatchEvent(new Event('tabchange'));
+            } catch (error) {
+                console.warn('Failed to apply notification search params:', error);
+            }
+        };
+
+        if (link.hash) {
+            const delay = typeof link.delay === 'number' ? link.delay : 100;
+            window.location.hash = link.hash;
+            if (hasSearchParams) {
+                setTimeout(applySearchParams, delay);
+            }
+            return true;
+        }
+
+        if (link.url) {
+            window.location.href = link.url;
+            return true;
+        }
+
+        return false;
+    };
+
     const handleNotificationAction = async (notification) => {
         try {
             // Mark as read first
@@ -407,6 +451,24 @@ function NotificationsSection() {
             // Navigate based on notification type
             const data = notification.metadata || notification.data || {};
             
+            const link = window.notificationAPI?.getNotificationLink
+                ? window.notificationAPI.getNotificationLink({
+                    type: notification.type,
+                    eventId: notification.event_id || data.event_id,
+                    metadata: data
+                })
+                : (window.NotificationLinkUtils?.getNotificationLink
+                    ? window.NotificationLinkUtils.getNotificationLink({
+                        type: notification.type,
+                        eventId: notification.event_id || data.event_id,
+                        metadata: data
+                    })
+                    : null);
+
+            if (applyLinkNavigation(link)) {
+                return;
+            }
+
             switch (notification.type) {
                 case 'message':
                     if (notification.event_id) {

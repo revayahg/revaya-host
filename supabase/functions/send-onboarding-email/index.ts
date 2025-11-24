@@ -41,7 +41,7 @@ serve(async (req) => {
     }
 
     // Initialize Supabase client
-    const supabaseUrl = 'https://drhzvzimmmdbsvwhlsxm.supabase.co'
+    const supabaseUrl = Deno.env.get('SUPABASE_URL') || 'https://drhzvzimmmdbsvwhlsxm.supabase.co'
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
     if (!supabaseServiceKey) {
       throw new Error('SUPABASE_SERVICE_ROLE_KEY environment variable is not set')
@@ -91,6 +91,52 @@ serve(async (req) => {
         }
       )
     }
+
+    // Get or generate unsubscribe token for user
+    // Check if user has unsubscribed
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('unsubscribe_token, unsubscribed_at')
+      .eq('id', user_id)
+      .maybeSingle()
+
+    // If user is unsubscribed, don't send marketing email
+    if (profile?.unsubscribed_at) {
+      console.log('📧 Onboarding email skipped - user has unsubscribed')
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          skipped: true, 
+          reason: 'User has unsubscribed from marketing emails' 
+        }),
+        { 
+          status: 200, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      )
+    }
+
+    // Generate token if it doesn't exist, or use existing one
+    let unsubscribeToken = profile?.unsubscribe_token
+    if (!unsubscribeToken) {
+      // Generate new UUID token using crypto.randomUUID (built-in)
+      unsubscribeToken = crypto.randomUUID()
+      
+      // Update profile with token
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ unsubscribe_token: unsubscribeToken })
+        .eq('id', user_id)
+      
+      if (updateError) {
+        console.error('⚠️ Failed to update unsubscribe token:', updateError)
+        // Continue anyway - token generation is not critical
+      }
+    }
+
+    // Build unsubscribe URL
+    const unsubscribeUrl = `https://mrjnkoijfrbsapykgfwj.supabase.co/functions/v1/unsubscribe?token=${unsubscribeToken}`
+    const preferencesUrl = 'https://www.revayahost.com/#/preferences'
 
     const displayName = user_name || user_email.split('@')[0]
     const subject = `Welcome to Revaya Host! Let's create your first event 🎉`
@@ -166,7 +212,15 @@ serve(async (req) => {
         <div class="footer">
             <p>Happy planning!<br>
             The Revaya Host Team</p>
-            <p><small>If you're not interested in receiving these emails, you can <a href="#">unsubscribe here</a>.</small></p>
+            <p style="margin-top: 20px; font-size: 12px; color: #6b7280; text-align: center;">
+                <a href="${unsubscribeUrl}" style="color:#64748B;text-decoration:underline;">Unsubscribe</a>
+                &nbsp;•&nbsp;
+                <a href="${preferencesUrl}" style="color:#64748B;text-decoration:underline;">Manage preferences</a>
+                <br>
+                <br>
+                Revaya Hospitality Group LLC • 407 Lincoln Road, Ste 6H, Miami Beach, FL 33139 • 
+                <a href="mailto:info@revayahg.com" style="color:#64748B;text-decoration:underline;">info@revayahg.com</a>
+            </p>
         </div>
     </body>
     </html>

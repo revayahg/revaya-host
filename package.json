@@ -7,7 +7,14 @@
     "dev": "python3 -m http.server 8000",
     "start": "python3 -m http.server 8000",
     "build": "echo 'Static site - no build step required'",
-    "deploy": "vercel --prod"
+    "deploy": "vercel --prod",
+    "supabase:login": "npx supabase login",
+    "supabase:link": "npx supabase link --project-ref YOUR_PROJECT_REF",
+    "supabase:db-push": "npx supabase db push",
+    "supabase:storage-create": "npx supabase storage create event-documents --public=false --file-size-limit=10485760",
+    "supabase:functions-deploy": "npx supabase functions deploy analyze-document-for-tasks",
+    "supabase:secrets-set": "npx supabase secrets set OPENAI_API_KEY=your_openai_api_key_here",
+    "ai-feature:setup": "./setup-ai-feature.sh"
   },
   "keywords": [
     "event-planning",

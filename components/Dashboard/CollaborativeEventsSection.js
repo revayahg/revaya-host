@@ -150,18 +150,6 @@ function CollaborativeEventsSection() {
             return dateA - dateB; // Ascending order for upcoming events
         });
 
-        const pastCollaborativeEvents = collaborativeEvents.filter(collab => {
-            const eventDateStr = getEventDate(collab.event);
-            if (!eventDateStr) return false;
-            const normalizedEventDate = new Date(eventDateStr);
-            normalizedEventDate.setHours(0, 0, 0, 0); // Normalize to midnight
-            return normalizedEventDate < currentDate;
-        }).sort((a, b) => {
-            const dateA = new Date(getEventDate(a.event));
-            const dateB = new Date(getEventDate(b.event));
-            return dateB - dateA; // Descending order for past events
-        });
-
         return React.createElement('div', {
             className: 'space-y-8'
         }, [
@@ -169,8 +157,6 @@ function CollaborativeEventsSection() {
                 key: 'title',
                 className: 'text-xl font-semibold text-gray-900'
             }, 'Events I\'m Collaborating On'),
-            
-            // Upcoming Events Section
             React.createElement('div', {
                 key: 'upcoming-section',
                 className: 'space-y-4'
@@ -222,12 +208,10 @@ function CollaborativeEventsSection() {
                             if (!displayData) return 'Date TBD';
                             
                             if (typeof displayData === 'object' && displayData.isMultiDate) {
-                                // Multi-date event - show date range
                                 const firstDateFormatted = window.formatLongDate ? window.formatLongDate(displayData.firstDate) : new Date(displayData.firstDate).toLocaleDateString();
                                 const lastDateFormatted = window.formatLongDate ? window.formatLongDate(displayData.lastDate) : new Date(displayData.lastDate).toLocaleDateString();
                                 return `${firstDateFormatted} - ${lastDateFormatted}`;
                             } else {
-                                // Single date event
                                 return window.formatLongDate ? window.formatLongDate(displayData) : new Date(displayData).toLocaleDateString();
                             }
                         })()),
@@ -256,98 +240,6 @@ function CollaborativeEventsSection() {
                     className: 'text-gray-500 text-center py-8'
                 }, 'No upcoming collaborative events')
             ])
-            ]),
-            
-            // Past Events Section
-            React.createElement('div', {
-                key: 'past-section',
-                className: 'space-y-4'
-            }, [
-                React.createElement('h3', {
-                    key: 'past-title',
-                    className: 'text-lg font-medium text-gray-800'
-                }, `Past Events I'm Collaborating On (${pastCollaborativeEvents.length})`),
-                React.createElement('div', {
-                    key: 'past-grid',
-                    className: 'grid gap-6'
-                }, pastCollaborativeEvents.length > 0 ? pastCollaborativeEvents.map((eventData, index) => {
-                    const event = eventData.event;
-                    if (!event) return null;
-                    
-                    return React.createElement('div', {
-                        key: event.id || index,
-                        className: 'bg-gray-50 shadow rounded-lg p-6 border-l-4 border-gray-300 opacity-75'
-                    }, React.createElement('div', {
-                        className: 'flex justify-between items-start'
-                    }, [
-                        React.createElement('div', {
-                            key: 'content',
-                            className: 'flex-1'
-                        }, [
-                            React.createElement('div', {
-                                key: 'header',
-                                className: 'flex items-center mb-2'
-                            }, [
-                                React.createElement('a', {
-                                    key: 'title',
-                                    href: `#/event/view/${event.id}`,
-                                    className: 'block hover:text-indigo-600 transition-colors'
-                                }, React.createElement('h3', {
-                                    className: 'text-lg font-medium text-gray-600'
-                                }, event.name || event.title)),
-                                React.createElement('span', {
-                                    key: 'role',
-                                    className: `ml-3 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                                        eventData.role === 'editor' ? 'bg-gray-200 text-gray-600' : 'bg-gray-200 text-gray-600'
-                                    }`
-                                }, eventData.role === 'editor' ? 'Editor' : 'Viewer'),
-                                React.createElement('span', {
-                                    key: 'past-badge',
-                                    className: 'ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-200 text-gray-600'
-                                }, 'Past Event')
-                            ]),
-                            React.createElement('p', {
-                                key: 'date',
-                                className: 'text-sm text-gray-400'
-                            }, (() => {
-                            const displayData = getDisplayDate(event);
-                            if (!displayData) return 'Date TBD';
-                            
-                            if (typeof displayData === 'object' && displayData.isMultiDate) {
-                                // Multi-date event - show date range
-                                const firstDateFormatted = window.formatLongDate ? window.formatLongDate(displayData.firstDate) : new Date(displayData.firstDate).toLocaleDateString();
-                                const lastDateFormatted = window.formatLongDate ? window.formatLongDate(displayData.lastDate) : new Date(displayData.lastDate).toLocaleDateString();
-                                return `${firstDateFormatted} - ${lastDateFormatted}`;
-                            } else {
-                                // Single date event
-                                return window.formatLongDate ? window.formatLongDate(displayData) : new Date(displayData).toLocaleDateString();
-                            }
-                        })()),
-                            React.createElement('p', {
-                                key: 'joined',
-                                className: 'text-xs text-gray-400 mt-1'
-                            }, `Joined: ${new Date(eventData.joined_at).toLocaleDateString()}`)
-                        ]),
-                        React.createElement('div', {
-                            key: 'actions',
-                            className: 'flex space-x-3'
-                        }, [
-                            React.createElement('a', {
-                                key: 'view',
-                                href: `#/event/view/${event.id}`,
-                                className: 'inline-flex items-center px-3 py-1.5 border border-gray-300 text-sm font-medium rounded-md text-gray-600 bg-gray-100 hover:bg-gray-200'
-                            }, [
-                                React.createElement('i', { key: 'icon', className: 'fas fa-eye mr-2' }),
-                                'View Event'
-                            ])
-                        ])
-                    ]));
-                }) : [
-                    React.createElement('p', {
-                        key: 'no-past',
-                        className: 'text-gray-500 text-center py-8'
-                    }, 'No past collaborative events')
-                ])
             ])
         ]);
     } catch (error) {

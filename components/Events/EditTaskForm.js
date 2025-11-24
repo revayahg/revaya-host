@@ -4,8 +4,9 @@ function EditTaskForm({ task, eventId, onSave, onCancel, vendorProfiles = [] }) 
         title: task?.title || '',
         description: task?.description || '',
         priority: task?.priority || 'medium',
-        status: task?.status || 'pending',
+        status: task?.status || 'not_started',
         due_date: window.DateUtils ? window.DateUtils.dbToInputDate(task?.due_date) : (task?.due_date || ''),
+        start_date: window.DateUtils ? window.DateUtils.dbToInputDate(task?.start_date) : (task?.start_date || ''),
         assigned_to: task?.assigned_to || '',
         assigned_to_type: task?.assigned_to_type || 'free_text'
     });
@@ -307,7 +308,7 @@ function EditTaskForm({ task, eventId, onSave, onCancel, vendorProfiles = [] }) 
                                     onChange={(e) => handleChange('status', e.target.value)}
                                     className="w-full px-3 py-2 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-200 bg-white"
                                 >
-                                    <option value="pending">Pending</option>
+                                    <option value="not_started">Not Started</option>
                                     <option value="in_progress">In Progress</option>
                                     <option value="completed">Completed</option>
                                 </select>
@@ -370,6 +371,20 @@ function EditTaskForm({ task, eventId, onSave, onCancel, vendorProfiles = [] }) 
                                     </div>
                                 )}
                             </div>
+                        </div>
+
+                        {/* Start Date */}
+                        <div className="bg-gray-50 p-3 rounded-xl">
+                            <label className="text-xs font-semibold text-gray-700 mb-2 flex items-center">
+                                <div className="icon-calendar text-sm mr-2"></div>
+                                Start Date
+                            </label>
+                            <input
+                                type="date"
+                                value={formData.start_date}
+                                onChange={(e) => handleChange('start_date', e.target.value)}
+                                className="w-full px-3 py-2 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-200 bg-white"
+                            />
                         </div>
 
                         {/* Due Date */}

@@ -111,21 +111,6 @@ function AssignedEventsSection({ collaborativeEvents = [], loadingAssigned = fal
 
         console.log('✅ Upcoming collaborative events after filtering:', upcomingCollaborativeEvents.length);
 
-        const pastCollaborativeEvents = collaborativeEvents.filter(collaboration => {
-            if (!collaboration || !collaboration.event) {
-                return false;
-            }
-            const eventDateStr = getEventDate(collaboration.event);
-            if (!eventDateStr) return false;
-            const normalizedEventDate = new Date(eventDateStr);
-            normalizedEventDate.setHours(0, 0, 0, 0); // Normalize to midnight
-            return normalizedEventDate < currentDate;
-        }).sort((a, b) => {
-            const dateA = new Date(getEventDate(a.event));
-            const dateB = new Date(getEventDate(b.event));
-            return dateB - dateA; // Descending for past events
-        });
-
         return React.createElement('section', {
             className: 'mt-8'
         }, [
@@ -219,89 +204,6 @@ function AssignedEventsSection({ collaborativeEvents = [], loadingAssigned = fal
                             key: 'no-upcoming',
                             className: 'text-gray-500 text-center py-8'
                         }, 'No upcoming collaborative events')
-                    ])
-                ]),
-
-                // Past collaborative events
-                React.createElement('div', {
-                    key: 'past-collaborative',
-                    className: 'space-y-4'
-                }, [
-                    React.createElement('h3', {
-                        key: 'past-title',
-                        className: 'text-lg font-medium text-gray-800'
-                    }, `Past Events I'm Collaborating On (${pastCollaborativeEvents.length})`),
-                    React.createElement('div', {
-                        key: 'past-list',
-                        className: 'space-y-4'
-                    }, pastCollaborativeEvents.length > 0 ? pastCollaborativeEvents.map(collaboration => {
-                        const event = collaboration.event;
-                        if (!event) return null;
-                        
-                        return React.createElement('a', {
-                            key: `past-${event.id}-${collaboration.role}-${collaboration.user_id || 'unknown'}`,
-                            href: `#/event/view/${event.id}`,
-                            className: 'block p-4 bg-white rounded shadow mb-4 hover:shadow-md transition-shadow cursor-pointer opacity-75'
-                        }, [
-                            React.createElement('div', {
-                                key: 'header',
-                                className: 'flex justify-between items-start mb-2'
-                            }, [
-                                React.createElement('div', {
-                                    key: 'title-section'
-                                }, [
-                                    React.createElement('h3', {
-                                        key: 'name',
-                                        className: 'text-md font-semibold text-gray-900 hover:text-indigo-600'
-                                    }, event.name),
-                                    React.createElement('p', {
-                                        key: 'role',
-                                        className: 'text-sm text-indigo-600 font-medium'
-                                    }, `Role: ${collaboration.role.charAt(0).toUpperCase() + collaboration.role.slice(1)}`)
-                                ]),
-                                React.createElement('span', {
-                                    key: 'past-tag',
-                                    className: 'text-xs font-medium px-2 py-1 rounded-full bg-gray-100 text-gray-600'
-                                }, 'Past Event')
-                            ]),
-                            React.createElement('p', {
-                                key: 'details',
-                                className: 'text-sm text-gray-600'
-                            }, (() => {
-                                const displayData = getDisplayDate(event);
-                                if (!displayData) return 'Date TBD';
-                                
-                                let dateStr;
-                                if (typeof displayData === 'object' && displayData.isMultiDate) {
-                                    // Multi-date event - show date range
-                                    const firstDateFormatted = window.formatLongDate ? window.formatLongDate(displayData.firstDate) : new Date(displayData.firstDate).toLocaleDateString();
-                                    const lastDateFormatted = window.formatLongDate ? window.formatLongDate(displayData.lastDate) : new Date(displayData.lastDate).toLocaleDateString();
-                                    dateStr = `${firstDateFormatted} - ${lastDateFormatted}`;
-                                } else {
-                                    // Single date event
-                                    dateStr = window.formatLongDate ? window.formatLongDate(displayData) : new Date(displayData).toLocaleDateString();
-                                }
-                                return `${dateStr} • ${event.location || 'Location TBD'}`;
-                            })()),
-                            React.createElement('div', {
-                                key: 'footer',
-                                className: 'flex items-center justify-between mt-2'
-                            }, [
-                                React.createElement('span', {
-                                    key: 'badge',
-                                    className: 'text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full'
-                                }, 'Completed'),
-                                React.createElement('i', {
-                                    key: 'arrow',
-                                    className: 'fas fa-arrow-right text-gray-400'
-                                })
-                            ])
-                        ]);
-                    }) : [
-                        React.createElement('p', {
-                            key: 'no-past',
-                            className: 'text-gray-500 text-center py-8'
-                        }, 'No past collaborative events')
                     ])
                 ])
             ])
