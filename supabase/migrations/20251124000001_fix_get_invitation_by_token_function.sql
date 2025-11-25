@@ -2,7 +2,11 @@
 -- Remove accepted_by column reference since it doesn't exist in the table
 -- Date: 2025-11-24
 
-CREATE OR REPLACE FUNCTION public.get_invitation_by_token(token_param TEXT)
+-- Drop the function first since we're changing the return type
+DROP FUNCTION IF EXISTS public.get_invitation_by_token(TEXT);
+
+-- Recreate the function with correct return type
+CREATE FUNCTION public.get_invitation_by_token(token_param TEXT)
 RETURNS TABLE (
   id UUID,
   event_id UUID,
