@@ -23,6 +23,7 @@ WITH CHECK (
   OR
   -- Users can insert their own role when they have a pending or accepted invitation
   -- (pending allows them to create the role during acceptance, before status is updated)
+  -- NOTE: Removed recursive check on event_user_roles to avoid infinite recursion
   (
     event_user_roles.user_id = auth.uid()
     AND EXISTS (
@@ -40,16 +41,6 @@ WITH CHECK (
           OR (ci.permission_level = 'owner' AND event_user_roles.role = 'owner')
         )
     )
-  )
-  OR
-  -- Users with existing admin/owner role can insert roles
-  EXISTS (
-    SELECT 1
-    FROM event_user_roles eur
-    WHERE eur.event_id = event_user_roles.event_id
-      AND eur.user_id = auth.uid()
-      AND eur.role IN ('owner', 'admin')
-      AND eur.status = 'active'
   )
 );
 

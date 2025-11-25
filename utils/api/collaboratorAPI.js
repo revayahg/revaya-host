@@ -612,85 +612,39 @@ window.collaboratorAPI = {
       }
 
 
-      const invitationPermission = this._normalizePermissionLevel(invitation, 'viewer');
-
-      // CRITICAL STEP: Add user to event_user_roles table (PRIMARY SOURCE OF TRUTH)
-      console.log('🔍 Checking for existing role for user:', session.user.id, 'event:', invitation.event_id);
+      // Use SECURITY DEFINER function to accept invitation and create role
+      // This bypasses RLS policies and handles everything in one transaction
+      console.log('🔍 Using RPC function to accept invitation and create role for user:', session.user.id, 'token:', token);
       
-      // First check if role already exists
-      const { data: existingRole, error: checkError } = await window.supabaseClient
-        .from('event_user_roles')
-        .select('*')
-        .eq('event_id', invitation.event_id)
-        .eq('user_id', session.user.id)
-        .maybeSingle();
+      const { data: rpcResult, error: rpcError } = await window.supabaseClient
+        .rpc('accept_invitation_and_create_role', {
+          invitation_token_param: token,
+          user_id_param: session.user.id
+        });
 
-      console.log('🔍 Existing role check result:', { existingRole, checkError });
+      console.log('🔍 RPC function result:', { rpcResult, rpcError });
 
-      if (checkError) {
-        throw new Error('Failed to check existing role: ' + checkError.message);
+      if (rpcError) {
+        throw new Error('Failed to accept invitation: ' + rpcError.message);
       }
 
-      let roleData;
-      if (existingRole) {
-        console.log('🔄 Updating existing role:', existingRole.id);
-        // Update existing role
-        const { data: updatedRole, error: updateError } = await window.supabaseClient
-          .from('event_user_roles')
-          .update({
-            role: invitationPermission,
-            status: 'active'
-          })
-          .eq('event_id', invitation.event_id)
-          .eq('user_id', session.user.id)
-          .select();
-
-        console.log('🔄 Role update result:', { updatedRole, updateError });
-
-        if (updateError) {
-          throw new Error('Failed to update collaborator role: ' + updateError.message);
-        }
-        roleData = updatedRole;
-      } else {
-        console.log('➕ Creating new role for user:', session.user.id, 'event:', invitation.event_id, 'role:', invitationPermission);
-        // Insert new role
-        const { data: newRole, error: insertError } = await window.supabaseClient
-          .from('event_user_roles')
-          .insert({
-            event_id: invitation.event_id,
-            user_id: session.user.id,
-            role: invitationPermission,
-            status: 'active'
-          })
-          .select();
-
-        console.log('➕ Role creation result:', { newRole, insertError });
-
-        if (insertError) {
-          throw new Error('Failed to add collaborator role: ' + insertError.message);
-        }
-        roleData = newRole;
+      if (!rpcResult || rpcResult.length === 0 || !rpcResult[0].success) {
+        throw new Error(rpcResult?.[0]?.message || 'Failed to accept invitation');
       }
 
-
-      // Update invitation status (secondary operation)
-      const { error: updateError } = await window.supabaseClient
-        .from('event_collaborator_invitations')
-        .update({ 
-          status: 'accepted',
-          accepted_at: new Date().toISOString()
-        })
-        .eq('id', invitation.id);
-
-      if (updateError) {
-      } else {
-      }
+      const result = rpcResult[0];
+      const roleData = {
+        event_id: result.event_id,
+        user_id: session.user.id,
+        role: result.role,
+        status: 'active'
+      };
 
       // Verify the role was actually created
       const { data: verifyRole, error: verifyError } = await window.supabaseClient
         .from('event_user_roles')
         .select('*')
-        .eq('event_id', invitation.event_id)
+        .eq('event_id', result.event_id)
         .eq('user_id', session.user.id);
 
 
