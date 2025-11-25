@@ -92,7 +92,7 @@
               }
               return originalObserve.call(this, target, options);
             } catch (error) {
-              if (error && error.message && error.message.includes(\"MutationObserver\")) {
+              if (error && error.message && error.message.includes('MutationObserver')) {
                 console.warn('Suppressing MutationObserver observe error:', error.message);
                 return;
               }
