@@ -354,7 +354,12 @@ const EventAPI = {
                 .select('id, name, title, description, about, location, event_type, date, start_date, end_date, event_time, attendance, expected_attendance, attendance_range, event_map, logo, budget, status, is_public, created_at, updated_at, user_id, created_by, owner_email, event_schedule, support_staff_needed')
                 .single();
 
-            if (error) throw error;
+            if (error) {
+                console.error('❌ EventAPI.updateEvent - Supabase error:', error);
+                console.error('❌ Error details:', JSON.stringify(error, null, 2));
+                console.error('❌ Clean updates that were sent:', cleanUpdates);
+                throw error;
+            }
 
             // Create notifications for significant changes
             await this.createEventUpdateNotifications(originalEvent, data, cleanUpdates);
