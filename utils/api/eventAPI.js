@@ -299,15 +299,31 @@ const EventAPI = {
 
             // Clean up any undefined or null values that might cause .match() errors
             // CRITICAL: Filter out columns that don't exist in the events table
+            // List of valid event columns - anything else will be filtered out
+            const VALID_EVENT_COLUMNS = [
+                'id', 'name', 'title', 'description', 'about', 'location', 'event_type',
+                'date', 'start_date', 'end_date', 'event_time', 'attendance', 'expected_attendance',
+                'attendance_range', 'vendor_categories', 'formatted_vendor_categories', 'vendor_category_groups',
+                'event_map', 'logo', 'budget', 'status', 'is_public', 'created_at', 'updated_at',
+                'user_id', 'created_by', 'owner_email', 'event_schedule', 'support_staff_needed',
+                'documents_processed_count'
+            ];
+            
             const cleanUpdates = {};
             Object.keys(updates).forEach(key => {
-                // Skip event_name - the column is called "name" not "event_name"
+                // CRITICAL: Skip event_name completely - the column is called "name" not "event_name"
                 if (key === 'event_name') {
                     // Map event_name to name if name is not already provided
                     if (!updates.name && updates.event_name) {
                         cleanUpdates.name = updates.event_name;
                     }
                     return; // Skip adding event_name
+                }
+                
+                // Skip any other invalid columns
+                if (!VALID_EVENT_COLUMNS.includes(key)) {
+                    console.warn(`⚠️ Skipping invalid event column: ${key}`);
+                    return;
                 }
                 
                 const value = updates[key];
@@ -320,6 +336,9 @@ const EventAPI = {
                     }
                 }
             });
+            
+            // Double-check: explicitly remove event_name if it somehow got through
+            delete cleanUpdates.event_name;
 
             // Update the event
             const { data, error } = await window.supabaseClient
