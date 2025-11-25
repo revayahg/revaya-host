@@ -678,8 +678,7 @@ window.collaboratorAPI = {
         .from('event_collaborator_invitations')
         .update({ 
           status: 'accepted',
-          accepted_at: new Date().toISOString(),
-          accepted_by: session.user.id
+          accepted_at: new Date().toISOString()
         })
         .eq('id', invitation.id);
 
