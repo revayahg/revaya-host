@@ -1201,11 +1201,12 @@ window.collaboratorAPI = {
           .eq('user_id', session.user.id);
         
 
-        // Get all invitations for current user
+        // Get all invitations for current user (by email match since accepted_by column doesn't exist)
         const { data: userInvitations } = await window.supabaseClient
           .from('event_collaborator_invitations')
           .select('*')
-          .eq('accepted_by', session.user.id);
+          .eq('status', 'accepted')
+          .ilike('email', session.user.email);
         
       }
 
