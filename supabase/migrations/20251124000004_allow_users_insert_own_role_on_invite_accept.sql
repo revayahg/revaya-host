@@ -21,7 +21,8 @@ WITH CHECK (
       AND (e.user_id = auth.uid() OR e.created_by = auth.uid())
   )
   OR
-  -- Users can insert their own role when they have an accepted invitation
+  -- Users can insert their own role when they have a pending or accepted invitation
+  -- (pending allows them to create the role during acceptance, before status is updated)
   (
     event_user_roles.user_id = auth.uid()
     AND EXISTS (
@@ -30,12 +31,12 @@ WITH CHECK (
       JOIN auth.users au ON au.id = auth.uid()
       WHERE ci.event_id = event_user_roles.event_id
         AND lower(ci.email) = lower(au.email)
-        AND ci.status = 'accepted'
+        AND ci.status IN ('pending', 'accepted')
         AND (
           -- Role matches invitation permission level
           (ci.permission_level = 'viewer' AND event_user_roles.role = 'viewer')
           OR (ci.permission_level = 'editor' AND event_user_roles.role = 'editor')
-          OR (ci.permission_level = 'admin' AND event_user_roles.role = 'owner')
+          OR (ci.permission_level = 'admin' AND event_user_roles.role IN ('owner', 'admin'))
           OR (ci.permission_level = 'owner' AND event_user_roles.role = 'owner')
         )
     )
