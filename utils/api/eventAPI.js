@@ -297,6 +297,12 @@ const EventAPI = {
                 delete updates.eventSchedule; // Remove from main update
             }
 
+            // DEBUG: Log what we received
+            console.log('🔍 EventAPI.updateEvent - Received updates:', Object.keys(updates));
+            if ('event_name' in updates) {
+                console.error('❌ ERROR: event_name found in updates object:', updates.event_name);
+            }
+            
             // Clean up any undefined or null values that might cause .match() errors
             // CRITICAL: Filter out columns that don't exist in the events table
             // List of valid event columns - anything else will be filtered out
@@ -309,24 +315,19 @@ const EventAPI = {
                 'documents_processed_count'
             ];
             
+            // FIRST: Create a completely clean copy of updates, removing event_name immediately
+            const sanitizedUpdates = { ...updates };
+            delete sanitizedUpdates.event_name;
+            
             const cleanUpdates = {};
-            Object.keys(updates).forEach(key => {
-                // CRITICAL: Skip event_name completely - the column is called "name" not "event_name"
-                if (key === 'event_name') {
-                    // Map event_name to name if name is not already provided
-                    if (!updates.name && updates.event_name) {
-                        cleanUpdates.name = updates.event_name;
-                    }
-                    return; // Skip adding event_name
-                }
-                
-                // Skip any other invalid columns
+            Object.keys(sanitizedUpdates).forEach(key => {
+                // Skip any invalid columns
                 if (!VALID_EVENT_COLUMNS.includes(key)) {
                     console.warn(`⚠️ Skipping invalid event column: ${key}`);
                     return;
                 }
                 
-                const value = updates[key];
+                const value = sanitizedUpdates[key];
                 if (value !== null && value !== undefined) {
                     // Ensure string values don't cause .match() errors
                     if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
@@ -337,8 +338,13 @@ const EventAPI = {
                 }
             });
             
-            // Double-check: explicitly remove event_name if it somehow got through
+            // Triple-check: explicitly remove event_name if it somehow got through
             delete cleanUpdates.event_name;
+            
+            console.log('✅ EventAPI.updateEvent - Clean updates:', Object.keys(cleanUpdates));
+            if ('event_name' in cleanUpdates) {
+                console.error('❌ CRITICAL ERROR: event_name still in cleanUpdates after filtering!');
+            }
 
             // Update the event
             const { data, error } = await window.supabaseClient
