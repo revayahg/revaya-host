@@ -611,82 +611,38 @@ window.collaboratorAPI = {
         throw new Error('Invalid or expired invitation');
       }
 
-      const invitationPermission = this._normalizePermissionLevel(invitation, 'viewer');
-
-      // CRITICAL STEP: Add user to event_user_roles table (PRIMARY SOURCE OF TRUTH)
-      // The RLS policy allows this if user has a pending invitation (validated above)
-      console.log('🔍 Creating role for user:', session.user.id, 'event:', invitation.event_id, 'role:', invitationPermission);
+      // Use SECURITY DEFINER function - bypasses RLS and handles everything atomically
+      // This is the simplest and most secure approach
+      console.log('🔍 Using SECURITY DEFINER function to accept invitation with token:', token);
       
-      // First check if role already exists
-      const { data: existingRole, error: checkError } = await window.supabaseClient
-        .from('event_user_roles')
-        .select('*')
-        .eq('event_id', invitation.event_id)
-        .eq('user_id', session.user.id)
-        .maybeSingle();
+      const { data: rpcResult, error: rpcError } = await window.supabaseClient
+        .rpc('accept_invitation_and_create_role', {
+          invitation_token_param: token
+        });
 
-      console.log('🔍 Existing role check result:', { existingRole, checkError });
+      console.log('🔍 RPC function result:', { rpcResult, rpcError });
 
-      let roleData;
-      if (existingRole) {
-        console.log('🔄 Updating existing role:', existingRole.id);
-        // Update existing role
-        const { data: updatedRole, error: updateError } = await window.supabaseClient
-          .from('event_user_roles')
-          .update({
-            role: invitationPermission,
-            status: 'active'
-          })
-          .eq('event_id', invitation.event_id)
-          .eq('user_id', session.user.id)
-          .select();
-
-        console.log('🔄 Role update result:', { updatedRole, updateError });
-
-        if (updateError) {
-          throw new Error('Failed to update collaborator role: ' + updateError.message);
-        }
-        roleData = updatedRole[0];
-      } else {
-        console.log('➕ Creating new role for user:', session.user.id, 'event:', invitation.event_id, 'role:', invitationPermission);
-        // Insert new role - RLS policy allows this if user has pending invitation
-        const { data: newRole, error: insertError } = await window.supabaseClient
-          .from('event_user_roles')
-          .insert({
-            event_id: invitation.event_id,
-            user_id: session.user.id,
-            role: invitationPermission,
-            status: 'active'
-          })
-          .select();
-
-        console.log('➕ Role creation result:', { newRole, insertError });
-
-        if (insertError) {
-          throw new Error('Failed to add collaborator role: ' + insertError.message);
-        }
-        roleData = newRole[0];
+      if (rpcError) {
+        throw new Error('Failed to accept invitation: ' + rpcError.message);
       }
 
-      // Update invitation status AFTER role is created successfully
-      const { error: updateInviteError } = await window.supabaseClient
-        .from('event_collaborator_invitations')
-        .update({ 
-          status: 'accepted',
-          accepted_at: new Date().toISOString()
-        })
-        .eq('id', invitation.id);
-
-      if (updateInviteError) {
-        console.warn('⚠️ Failed to update invitation status:', updateInviteError);
-        // Don't throw - role was created successfully
+      if (!rpcResult || rpcResult.length === 0 || !rpcResult[0].success) {
+        throw new Error(rpcResult?.[0]?.message || 'Failed to accept invitation');
       }
+
+      const result = rpcResult[0];
+      const roleData = {
+        event_id: result.event_id,
+        user_id: session.user.id,
+        role: result.role,
+        status: 'active'
+      };
 
       // Verify the role was actually created
       const { data: verifyRole, error: verifyError } = await window.supabaseClient
         .from('event_user_roles')
         .select('*')
-        .eq('event_id', invitation.event_id)
+        .eq('event_id', result.event_id)
         .eq('user_id', session.user.id);
 
 
