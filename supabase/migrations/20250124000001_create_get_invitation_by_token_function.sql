@@ -11,8 +11,7 @@ RETURNS TABLE (
   invited_by UUID,
   invited_by_name TEXT,
   created_at TIMESTAMPTZ,
-  accepted_at TIMESTAMPTZ,
-  accepted_by UUID
+  accepted_at TIMESTAMPTZ
 )
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -30,8 +29,7 @@ BEGIN
     eci.invited_by,
     eci.invited_by_name,
     eci.created_at,
-    eci.accepted_at,
-    eci.accepted_by
+    eci.accepted_at
   FROM event_collaborator_invitations eci
   WHERE eci.invitation_token = token_param;
 END;
