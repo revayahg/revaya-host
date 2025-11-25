@@ -298,8 +298,18 @@ const EventAPI = {
             }
 
             // Clean up any undefined or null values that might cause .match() errors
+            // CRITICAL: Filter out columns that don't exist in the events table
             const cleanUpdates = {};
             Object.keys(updates).forEach(key => {
+                // Skip event_name - the column is called "name" not "event_name"
+                if (key === 'event_name') {
+                    // Map event_name to name if name is not already provided
+                    if (!updates.name && updates.event_name) {
+                        cleanUpdates.name = updates.event_name;
+                    }
+                    return; // Skip adding event_name
+                }
+                
                 const value = updates[key];
                 if (value !== null && value !== undefined) {
                     // Ensure string values don't cause .match() errors
