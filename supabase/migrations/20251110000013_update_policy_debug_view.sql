@@ -1,7 +1,8 @@
 SET statement_timeout TO 0;
 SET lock_timeout TO 0;
 
-CREATE OR REPLACE VIEW public.policy_debug AS
+DROP VIEW IF EXISTS public.policy_debug;
+CREATE VIEW public.policy_debug AS
 SELECT
   pol.tablename,
   pol.policyname,

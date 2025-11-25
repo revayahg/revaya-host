@@ -1,30 +1,3 @@
-ALTER TABLE event_documents ENABLE ROW LEVEL SECURITY;
-
-DROP POLICY IF EXISTS "Users can view documents for events they collaborate on" ON event_documents;
-DROP POLICY IF EXISTS "Users can insert documents for events they own or edit" ON event_documents;
-DROP POLICY IF EXISTS "Users can update documents for events they own or edit" ON event_documents;
-DROP POLICY IF EXISTS "Users can delete documents for events they own or edit" ON event_documents;
-
-CREATE POLICY "Users can view documents for events they collaborate on"
-ON event_documents
-FOR SELECT
-USING (public.can_user_view_event(event_id));
-
-CREATE POLICY "Users can insert documents for events they own or edit"
-ON event_documents
-FOR INSERT
-WITH CHECK (public.can_user_edit_event(event_id));
-
-CREATE POLICY "Users can update documents for events they own or edit"
-ON event_documents
-FOR UPDATE
-USING (public.can_user_edit_event(event_id));
-
-CREATE POLICY "Users can delete documents for events they own or edit"
-ON event_documents
-FOR DELETE
-USING (public.can_user_edit_event(event_id));
-
 -- Restore critical policies and permissions for collaboration and AI document features
 -- This migration is idempotent and can be safely re-run.
 
@@ -53,7 +26,7 @@ COMMENT ON COLUMN event_collaborator_invitations.read_status IS
     'Tracks whether the collaborator invitation notification has been read by the invited user';
 
 -- ============================================================
--- Helper predicates for policy checks
+-- Helper predicates for policy checks (MUST be created BEFORE policies that use them)
 -- ============================================================
 DO $$
 BEGIN
@@ -121,8 +94,35 @@ END
 $$;
 
 -- ============================================================
--- event_documents table policies
+-- event_documents table policies (after helper functions are created)
 -- ============================================================
+ALTER TABLE event_documents ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users can view documents for events they collaborate on" ON event_documents;
+DROP POLICY IF EXISTS "Users can insert documents for events they own or edit" ON event_documents;
+DROP POLICY IF EXISTS "Users can update documents for events they own or edit" ON event_documents;
+DROP POLICY IF EXISTS "Users can delete documents for events they own or edit" ON event_documents;
+
+CREATE POLICY "Users can view documents for events they collaborate on"
+ON event_documents
+FOR SELECT
+USING (public.can_user_view_event(event_id));
+
+CREATE POLICY "Users can insert documents for events they own or edit"
+ON event_documents
+FOR INSERT
+WITH CHECK (public.can_user_edit_event(event_id));
+
+CREATE POLICY "Users can update documents for events they own or edit"
+ON event_documents
+FOR UPDATE
+USING (public.can_user_edit_event(event_id));
+
+CREATE POLICY "Users can delete documents for events they own or edit"
+ON event_documents
+FOR DELETE
+USING (public.can_user_edit_event(event_id));
+
 -- ============================================================
 -- Storage policies for event-documents bucket
 -- ============================================================
@@ -166,4 +166,3 @@ USING (
     bucket_id = 'event-documents'
     AND public.can_user_edit_event((storage.foldername(name))[1]::uuid)
 );
-
