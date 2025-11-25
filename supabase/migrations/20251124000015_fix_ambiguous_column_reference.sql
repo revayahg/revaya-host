@@ -121,11 +121,10 @@ BEGIN
     );
   END IF;
 
-  -- Update invitation status
+  -- Update invitation status (NO updated_at column exists in this table!)
   UPDATE event_collaborator_invitations eci
   SET status = 'accepted',
-      accepted_at = NOW(),
-      updated_at = NOW()
+      accepted_at = NOW()
   WHERE eci.id = v_invitation_id;
 
   -- Return success - use variables to avoid ambiguity
