@@ -611,6 +611,7 @@ window.collaboratorAPI = {
         throw new Error('Invalid or expired invitation');
       }
 
+      const invitationPermission = this._normalizePermissionLevel(invitation, 'viewer');
 
       // CRITICAL STEP: Add user to event_user_roles table (PRIMARY SOURCE OF TRUTH)
       // The RLS policy allows this if user has a pending invitation (validated above)
