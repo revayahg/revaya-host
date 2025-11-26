@@ -684,26 +684,42 @@ serve(async (req)=>{
           .eq('email', email)
           .maybeSingle()
         
-        // Check if user is unsubscribed (only skip marketing emails, not transactional)
-        // For notification emails, we still send them but don't include unsubscribe link if unsubscribed
+        // Check if user is unsubscribed
         if (profile) {
-          if (!profile.unsubscribed_at) {
-            // Generate token if it doesn't exist
-            let unsubscribeToken = profile.unsubscribe_token
-            if (!unsubscribeToken) {
-              unsubscribeToken = crypto.randomUUID()
-              await supabase
-                .from('profiles')
-                .update({ unsubscribe_token: unsubscribeToken })
-                .eq('id', profile.id)
-            }
-            // Build unsubscribe URL pointing to frontend page
-            // Frontend page handles the unsubscribe request with proper authentication
-            const baseUrl = supabaseUrl.includes('drhzvzimmmdbsvwhlsxm') 
-              ? 'http://localhost:8000'
-              : 'https://www.revayahost.com'
-            unsubscribeLink = `${baseUrl}/#/unsubscribed?token=${unsubscribeToken}`
+          // If user is unsubscribed, skip sending the email entirely
+          if (profile.unsubscribed_at) {
+            console.log('📧 Email skipped - user has unsubscribed:', email)
+            return new Response(JSON.stringify({
+              success: true,
+              skipped: true,
+              reason: 'User has unsubscribed from emails',
+              notification_type,
+              email_sent_to: email
+            }), {
+              headers: {
+                ...corsHeaders,
+                'Content-Type': 'application/json'
+              },
+              status: 200
+            })
           }
+          
+          // User is not unsubscribed - generate token and include unsubscribe link
+          // Generate token if it doesn't exist
+          let unsubscribeToken = profile.unsubscribe_token
+          if (!unsubscribeToken) {
+            unsubscribeToken = crypto.randomUUID()
+            await supabase
+              .from('profiles')
+              .update({ unsubscribe_token: unsubscribeToken })
+              .eq('id', profile.id)
+          }
+          // Build unsubscribe URL pointing to frontend page
+          // Frontend page handles the unsubscribe request with proper authentication
+          const baseUrl = supabaseUrl.includes('drhzvzimmmdbsvwhlsxm') 
+            ? 'http://localhost:8000'
+            : 'https://www.revayahost.com'
+          unsubscribeLink = `${baseUrl}/#/unsubscribed?token=${unsubscribeToken}`
         } else {
           // If no profile found, try contacts table (if it exists)
           // For now, we'll skip unsubscribe link for non-users

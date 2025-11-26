@@ -71,6 +71,21 @@ function Unsubscribed() {
 
             if (response.ok && result.success) {
                 console.log('✅ Successfully unsubscribed:', result.message);
+                
+                // Verify the unsubscribe worked by checking the database
+                try {
+                    const { data: profile } = await window.supabaseClient
+                        .from('profiles')
+                        .select('email, unsubscribed_at')
+                        .eq('unsubscribe_token', token)
+                        .maybeSingle();
+                    
+                    if (profile?.unsubscribed_at) {
+                        console.log('✅ Verified: Unsubscribe timestamp set in database:', profile.unsubscribed_at);
+                    }
+                } catch (verifyError) {
+                    console.warn('⚠️ Could not verify unsubscribe status:', verifyError);
+                }
             } else {
                 // Try direct database update as fallback
                 console.error('❌ Unsubscribe function error:', result);
