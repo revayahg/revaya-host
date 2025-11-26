@@ -346,12 +346,13 @@ const EventAPI = {
                 console.error('❌ CRITICAL ERROR: event_name still in cleanUpdates after filtering!');
             }
 
-            // Update the event - explicitly select only known columns to avoid view/alias issues
+            // Update the event - use select('*') to avoid column mismatch issues
+            // We'll filter the response if needed, but this ensures we don't request non-existent columns
             const { data, error } = await window.supabaseClient
                 .from('events')
                 .update(cleanUpdates)
                 .eq('id', eventId)
-                .select('id, name, title, description, about, location, event_type, date, start_date, end_date, event_time, attendance, expected_attendance, attendance_range, event_map, logo, budget, status, is_public, created_at, updated_at, user_id, created_by, owner_email, event_schedule, support_staff_needed')
+                .select('*')
                 .single();
 
             if (error) {
