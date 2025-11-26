@@ -278,7 +278,10 @@ function App() {
           React.createElement('div', { className: 'p-8' }, 'Loading terms of use...');
       }
       
-      if (route === '/unsubscribed' || route === 'unsubscribed') {
+      // Handle unsubscribe route - support both hash and non-hash URLs
+      // Also handle query params in the route string
+      const unsubscribedRoute = route.split('?')[0];
+      if (unsubscribedRoute === '/unsubscribed' || unsubscribedRoute === 'unsubscribed' || route.startsWith('/unsubscribed')) {
         return window.Unsubscribed ? React.createElement(window.Unsubscribed) :
           React.createElement('div', { className: 'p-8' }, 'Loading unsubscribed page...');
       }

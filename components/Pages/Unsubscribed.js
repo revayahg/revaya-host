@@ -11,8 +11,30 @@ function Unsubscribed() {
 
     React.useEffect(() => {
         // Check if there's a token in the URL (from email unsubscribe link)
-        const urlParams = new URLSearchParams(window.location.search);
-        const token = urlParams.get('token');
+        // Try both location.search (regular query params) and location.hash (hash-based routing)
+        let token = null;
+        
+        // Method 1: Try regular query parameters
+        if (window.location.search) {
+            const urlParams = new URLSearchParams(window.location.search);
+            token = urlParams.get('token');
+        }
+        
+        // Method 2: Try hash fragment parameters (for hash-based routing)
+        if (!token && window.location.hash && window.location.hash.includes('?')) {
+            const hashQuery = window.location.hash.split('?')[1];
+            const hashParams = new URLSearchParams(hashQuery);
+            token = hashParams.get('token');
+        }
+        
+        // Method 3: Try regex from full URL
+        if (!token) {
+            const tokenRegex = /[?&#]token=([^&#]+)/i;
+            const match = window.location.href.match(tokenRegex);
+            if (match) {
+                token = match[1];
+            }
+        }
         
         if (token) {
             // Process unsubscribe request

@@ -12,6 +12,16 @@
       "dest": "/$1"
     }
   ],
+  "rewrites": [
+    {
+      "source": "/unsubscribed",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/unsubscribed/:path*",
+      "destination": "/index.html"
+    }
+  ],
   "env": {
     "NODE_ENV": "production"
   }
