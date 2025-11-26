@@ -346,13 +346,27 @@ const EventAPI = {
                 console.error('❌ CRITICAL ERROR: event_name still in cleanUpdates after filtering!');
             }
 
-            // Update the event - use select('*') to avoid column mismatch issues
-            // We'll filter the response if needed, but this ensures we don't request non-existent columns
-            const { data, error } = await window.supabaseClient
+            // Update the event - select only id to confirm update worked, then fetch full record separately
+            // This avoids any view/alias issues with select('*')
+            const { data: updateResult, error: updateError } = await window.supabaseClient
                 .from('events')
                 .update(cleanUpdates)
                 .eq('id', eventId)
-                .select('*')
+                .select('id')
+                .single();
+                
+            if (updateError) {
+                console.error('❌ EventAPI.updateEvent - Update error:', updateError);
+                console.error('❌ Error details:', JSON.stringify(updateError, null, 2));
+                console.error('❌ Clean updates that were sent:', cleanUpdates);
+                throw updateError;
+            }
+            
+            // Now fetch the full updated event record
+            const { data, error } = await window.supabaseClient
+                .from('events')
+                .select('id, name, title, description, about, location, event_type, date, start_date, end_date, event_time, attendance, expected_attendance, attendance_range, event_map, logo, budget, status, is_public, created_at, updated_at, user_id, created_by, event_schedule, support_staff_needed')
+                .eq('id', eventId)
                 .single();
 
             if (error) {
