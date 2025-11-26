@@ -8,18 +8,15 @@
   ],
   "routes": [
     {
-      "src": "/(.*)",
-      "dest": "/$1"
-    }
-  ],
-  "rewrites": [
-    {
-      "source": "/unsubscribed",
-      "destination": "/index.html"
+      "handle": "filesystem"
     },
     {
-      "source": "/unsubscribed/:path*",
-      "destination": "/index.html"
+      "src": "/unsubscribed(.*)",
+      "dest": "/index.html"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/index.html"
     }
   ],
   "env": {
