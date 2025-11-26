@@ -10,7 +10,21 @@ function App() {
   const [access, setAccess] = React.useState(
     localStorage.getItem('access_granted') === 'true'
   );
-  const [currentRoute, setCurrentRoute] = React.useState(window.location.hash || '#');
+  // Handle both hash-based routing and direct pathname routing
+  const getInitialRoute = () => {
+    // If there's a hash, use it
+    if (window.location.hash) {
+      return window.location.hash;
+    }
+    // If pathname is /unsubscribed, convert to hash route
+    if (window.location.pathname === '/unsubscribed') {
+      return '#/unsubscribed' + window.location.search;
+    }
+    // Default to hash or root
+    return window.location.hash || '#';
+  };
+  
+  const [currentRoute, setCurrentRoute] = React.useState(getInitialRoute());
   const [refreshKey, setRefreshKey] = React.useState(0);
 
   // All useEffect hooks must be called consistently on every render
@@ -57,6 +71,14 @@ function App() {
 
     window.addEventListener('hashchange', handleHashChange);
     window.addEventListener('navigationRefresh', handleNavigationRefresh);
+    
+    // Handle direct pathname access (non-hash URLs) - especially for unsubscribe
+    if (window.location.pathname === '/unsubscribed' && !window.location.hash) {
+      // Convert to hash route so our routing works
+      const search = window.location.search || '';
+      window.location.hash = '#/unsubscribed' + search;
+      setCurrentRoute('#/unsubscribed' + search);
+    }
     
     return () => {
       try {
