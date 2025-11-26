@@ -606,8 +606,20 @@ serve(async (req)=>{
       headers: corsHeaders
     });
   }
+  
+  console.log('📧 send-notification-email function called', {
+    method: req.method,
+    url: req.url,
+    hasBody: !!req.body
+  });
+  
   try {
     const requestBody = await req.json();
+    console.log('📧 Request body received:', {
+      email: requestBody.email,
+      notification_type: requestBody.notification_type,
+      event_id: requestBody.event_id
+    });
     const { email, notification_type, event_id, event_name, // Common fields
     inviter_name, assigner_name, sender_name, updated_by, // Task specific
     task_title, task_description, due_date, priority, task_assignment_token, assignment_token, // Invitation specific
@@ -685,7 +697,12 @@ serve(async (req)=>{
                 .update({ unsubscribe_token: unsubscribeToken })
                 .eq('id', profile.id)
             }
-            unsubscribeLink = `https://mrjnkoijfrbsapykgfwj.supabase.co/functions/v1/unsubscribe?token=${unsubscribeToken}`
+            // Build unsubscribe URL pointing to frontend page
+            // Frontend page handles the unsubscribe request with proper authentication
+            const baseUrl = supabaseUrl.includes('drhzvzimmmdbsvwhlsxm') 
+              ? 'http://localhost:8000'
+              : 'https://www.revayahost.com'
+            unsubscribeLink = `${baseUrl}/#/unsubscribed?token=${unsubscribeToken}`
           }
         } else {
           // If no profile found, try contacts table (if it exists)
@@ -737,6 +754,12 @@ serve(async (req)=>{
         </body>`
       )
     }
+    // Validate RESEND_API_KEY exists
+    if (!RESEND_API_KEY) {
+      console.error('❌ RESEND_API_KEY is not set in environment variables');
+      throw new Error('Email service configuration error: RESEND_API_KEY not set');
+    }
+
     console.log('📨 Sending email:', {
       to: email,
       type: notification_type,

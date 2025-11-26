@@ -52,19 +52,32 @@ serve(async (req) => {
       })
     }
 
-    // Get token from query parameters
+    // Get token and format from query parameters
     const url = new URL(req.url)
     const token = url.searchParams.get('token')
+    const format = url.searchParams.get('format') || 'redirect' // 'redirect' or 'json'
 
     if (!token) {
-      // No token provided - redirect to unsubscribed page anyway with message
+      // No token provided
+      if (format === 'json') {
+        return new Response(JSON.stringify({ success: false, error: 'Missing token' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        })
+      }
       return Response.redirect(getConfirmUrl() + '?error=invalid_token', 302)
     }
     
     // Validate UUID format for security (unsubscribe tokens are UUIDs)
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
     if (!uuidRegex.test(token)) {
-      // Invalid token format - redirect without exposing details
+      // Invalid token format
+      if (format === 'json') {
+        return new Response(JSON.stringify({ success: false, error: 'Invalid token format' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        })
+      }
       return Response.redirect(getConfirmUrl(), 302)
     }
 
@@ -74,6 +87,12 @@ serve(async (req) => {
     
     if (!supabaseUrl || !supabaseServiceKey) {
       console.error('Missing Supabase credentials')
+      if (format === 'json') {
+        return new Response(JSON.stringify({ success: false, error: 'Server configuration error' }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        })
+      }
       return Response.redirect(getConfirmUrl() + '?error=server_error', 302)
     }
 
@@ -124,12 +143,36 @@ serve(async (req) => {
       console.log('⚠️ Token not found or already used:', token)
     }
 
+    // Return response based on format requested
+    if (format === 'json') {
+      // Return JSON response for frontend calls
+      return new Response(JSON.stringify({ 
+        success: !!updateResult.data,
+        message: updateResult.data ? 'Successfully unsubscribed' : 'Token not found'
+      }), {
+        status: updateResult.data ? 200 : 404,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    }
+    
     // Always redirect to confirmation page (even if token not found, for security)
     // This prevents attackers from discovering valid emails by testing tokens
     return Response.redirect(getConfirmUrl(), 302)
 
   } catch (error) {
     console.error('❌ Unsubscribe error:', error)
+    
+    // Return JSON error if format=json was requested
+    if (format === 'json') {
+      return new Response(JSON.stringify({ 
+        success: false,
+        error: 'Server error processing unsubscribe request'
+      }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    }
+    
     // Redirect to confirmation page on error (don't expose error details)
     return Response.redirect(getConfirmUrl(), 302)
   }

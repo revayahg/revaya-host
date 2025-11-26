@@ -1,10 +1,108 @@
 /**
  * Unsubscribed Page Component
  * Displays confirmation when users unsubscribe from marketing emails
+ * Also handles unsubscribe requests from email links
  * File: components/Pages/Unsubscribed.js
  */
 
 function Unsubscribed() {
+    const [status, setStatus] = React.useState('processing'); // processing, success, error
+    const [message, setMessage] = React.useState('Processing your unsubscribe request...');
+
+    React.useEffect(() => {
+        // Check if there's a token in the URL (from email unsubscribe link)
+        const urlParams = new URLSearchParams(window.location.search);
+        const token = urlParams.get('token');
+        
+        if (token) {
+            // Process unsubscribe request
+            handleUnsubscribe(token);
+        } else {
+            // No token - just show confirmation page
+            setStatus('success');
+            setMessage('');
+        }
+    }, []);
+
+    async function handleUnsubscribe(token) {
+        try {
+            console.log('📧 Processing unsubscribe request with token:', token);
+            
+            // Validate token format (UUID)
+            const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+            if (!uuidRegex.test(token)) {
+                throw new Error('Invalid unsubscribe token format');
+            }
+
+            // Call the edge function with proper authentication headers
+            // Use format=json to get JSON response instead of redirect
+            const response = await fetch(`${window.SUPABASE_URL}/functions/v1/unsubscribe?token=${token}&format=json`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${window.SUPABASE_ANON_KEY}`,
+                    'apikey': window.SUPABASE_ANON_KEY,
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            const result = await response.json();
+
+            if (response.ok && result.success) {
+                console.log('✅ Successfully unsubscribed:', result.message);
+            } else {
+                // Try direct database update as fallback
+                console.error('❌ Unsubscribe function error:', result);
+                try {
+                    const { data: dbData, error: dbError } = await window.supabaseClient
+                        .from('profiles')
+                        .update({ 
+                            unsubscribed_at: new Date().toISOString(),
+                            updated_at: new Date().toISOString()
+                        })
+                        .eq('unsubscribe_token', token)
+                        .select('id, email')
+                        .maybeSingle();
+
+                    if (!dbError && dbData) {
+                        console.log('✅ Successfully unsubscribed via database update:', dbData.email || dbData.id);
+                    } else {
+                        console.log('⚠️ Both methods failed, but showing success for security');
+                    }
+                } catch (dbError) {
+                    console.error('❌ Database fallback also failed:', dbError);
+                }
+            }
+
+            // Success - update status
+            setStatus('success');
+            setMessage('');
+            
+        } catch (error) {
+            console.error('❌ Unsubscribe error:', error);
+            // Even on error, show success message for security (don't reveal if token is valid/invalid)
+            setStatus('success');
+            setMessage('');
+        }
+    }
+
+    if (status === 'processing') {
+        return (
+            <div 
+                className="min-h-screen bg-gray-50 py-12 legal-page-container" 
+                data-name="unsubscribed" 
+                data-file="components/Pages/Unsubscribed.js"
+                style={{ minHeight: '60vh', display: 'grid', placeItems: 'center', padding: '32px' }}
+            >
+                <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8" style={{ maxWidth: '640px', textAlign: 'center' }}>
+                    <div className="bg-white rounded-lg shadow-sm p-8 md:p-12">
+                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
+                        <p className="text-gray-600">{message}</p>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div 
             className="min-h-screen bg-gray-50 py-12 legal-page-container" 

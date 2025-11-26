@@ -392,6 +392,7 @@ const EventAPI = {
             
             // Skip budget-related updates as per plan
             if (updates.budget || updates.total_budget || updates.budget_items) {
+                console.log('⏭️ Skipping notifications - budget update detected');
                 // Skipping notifications - budget update
                 return;
             }
@@ -419,10 +420,15 @@ const EventAPI = {
                 changes.push(`Event schedule updated`);
             }
 
+            console.log('📧 Event update - Changes detected:', changes);
+            
             if (changes.length === 0) {
+                console.log('⏭️ No significant changes detected - skipping email notifications');
                 // No significant changes, skipping notifications
                 return;
             }
+            
+            console.log('✅ Significant changes detected - proceeding with email notifications');
 
             // Get all event collaborators (not just vendors)
             // Use a two-step query to avoid the relationship issue
@@ -464,8 +470,14 @@ const EventAPI = {
             }
 
             // Collaborators query completed
+            console.log('📧 Event update - Collaborators check:', {
+                hasError: !!collaboratorsError,
+                collaboratorCount: collaborators?.length || 0,
+                collaborators: collaborators
+            });
 
             if (collaboratorsError || !collaborators?.length) {
+                console.log('📧 No collaborators found, attempting to send to event owner');
                 // No collaborators found, sending notification to event owner instead
                 
                 // Send notification to event owner as fallback
@@ -479,8 +491,15 @@ const EventAPI = {
 
                 // Event owner lookup completed
 
+                console.log('📧 Event owner email check:', {
+                    hasEmail: !!eventOwner?.email,
+                    email: eventOwner?.email,
+                    hasService: !!window.unifiedNotificationService
+                });
+                
                 if (eventOwner?.email && window.unifiedNotificationService) {
                     const updaterName = session?.data?.session?.user?.email || 'Event Manager';
+                    console.log('✅ Sending event update email to event owner:', eventOwner.email);
                     // Sending email to event owner
                     await window.unifiedNotificationService.sendEventUpdateEmail(
                         eventOwner.email,
@@ -490,8 +509,9 @@ const EventAPI = {
                         updaterName,
                         changes.join(', ')
                     );
-                    // Event update email sent to event owner
+                    console.log('✅ Event update email sent to event owner');
                 } else {
+                    console.log('⚠️ Could not send email - missing event owner email or unifiedNotificationService');
                     // Could not send email - missing event owner email or unifiedNotificationService
                 }
                 return;
@@ -512,8 +532,19 @@ const EventAPI = {
                 'Event Manager';
 
             // Create notifications and send emails for each collaborator
+            console.log('📧 Event update - Checking for collaborators to notify:', {
+                collaboratorCount: collaborators.length,
+                hasUnifiedService: !!window.unifiedNotificationService,
+                collaborators: collaborators.map(c => ({
+                    user_id: c.user_id,
+                    hasEmail: !!c.profiles?.email,
+                    email: c.profiles?.email
+                }))
+            });
+            
             const notificationPromises = collaborators.map(async (collaborator) => {
                 if (!collaborator.user_id || collaborator.user_id === session?.data?.session?.user?.id) {
+                    console.log('⏭️ Skipping notification for current user:', collaborator.user_id);
                     // Skipping notification for current user
                     return;
                 }
@@ -531,7 +562,15 @@ const EventAPI = {
                     }
 
                     // Send email notification
+                    console.log('📧 Checking email notification conditions:', {
+                        hasService: !!window.unifiedNotificationService,
+                        hasEmail: !!collaborator.profiles?.email,
+                        email: collaborator.profiles?.email,
+                        collaborator: collaborator
+                    });
+                    
                     if (window.unifiedNotificationService && collaborator.profiles?.email) {
+                        console.log('✅ Sending event update email to:', collaborator.profiles.email);
                         await window.unifiedNotificationService.sendEventUpdateEmail(
                             collaborator.profiles.email,
                             updatedEvent.name || updatedEvent.title || 'Event',
@@ -540,7 +579,12 @@ const EventAPI = {
                             updaterName,
                             changes.join(', ')
                         );
-                        // Event update email sent to collaborator
+                        console.log('✅ Event update email sent to collaborator:', collaborator.profiles.email);
+                    } else {
+                        console.log('⚠️ Email not sent - missing service or email:', {
+                            hasService: !!window.unifiedNotificationService,
+                            hasEmail: !!collaborator.profiles?.email
+                        });
                     }
                 } catch (notificationError) {
                     console.error('❌ Event update notification failed (non-blocking):', notificationError);

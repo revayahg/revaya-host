@@ -47,7 +47,12 @@ const unifiedNotificationService = {
   // Send any type of notification
   async sendNotification(notificationData) {
     try {
-      // Sending notification
+      console.log('📧 unifiedNotificationService.sendNotification called:', {
+        email: notificationData.email,
+        type: notificationData.notification_type,
+        hasSupabaseClient: !!window.supabaseClient,
+        hasFunctions: !!window.supabaseClient?.functions
+      });
       
       // Call the unified edge function
       const { data, error } = await window.supabaseClient.functions.invoke('send-notification-email', {
@@ -56,14 +61,22 @@ const unifiedNotificationService = {
 
       if (error) {
         console.error('❌ Notification failed:', error);
+        console.error('❌ Error details:', {
+          message: error.message,
+          status: error.status,
+          details: error.details,
+          hint: error.hint
+        });
         throw error;
       }
 
+      console.log('✅ Notification sent successfully:', data);
       // Notification sent successfully
       return data;
       
     } catch (error) {
       console.error('❌ Notification service error:', error);
+      console.error('❌ Full error object:', error);
       throw error;
     }
   },

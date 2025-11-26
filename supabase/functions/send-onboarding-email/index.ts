@@ -134,8 +134,12 @@ serve(async (req) => {
       }
     }
 
-    // Build unsubscribe URL
-    const unsubscribeUrl = `https://mrjnkoijfrbsapykgfwj.supabase.co/functions/v1/unsubscribe?token=${unsubscribeToken}`
+    // Build unsubscribe URL pointing to frontend page
+    // Frontend page handles the unsubscribe request with proper authentication
+    const baseUrl = supabaseUrl.includes('drhzvzimmmdbsvwhlsxm') 
+      ? 'http://localhost:8000'
+      : 'https://www.revayahost.com'
+    const unsubscribeUrl = `${baseUrl}/#/unsubscribed?token=${unsubscribeToken}`
     const preferencesUrl = 'https://www.revayahost.com/#/preferences'
 
     const displayName = user_name || user_email.split('@')[0]
