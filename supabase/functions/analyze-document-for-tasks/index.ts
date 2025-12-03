@@ -53,6 +53,23 @@ interface TaskSuggestion {
 
 // Server-side file validation function
 function validateDocumentFile(document: DocumentRecord): { valid: boolean; error?: string } {
+  // Check required fields exist
+  if (!document.file_type) {
+    return { valid: false, error: 'Missing file type' }
+  }
+  
+  if (typeof document.file_size !== 'number') {
+    return { valid: false, error: 'Missing or invalid file size' }
+  }
+  
+  if (!document.file_name) {
+    return { valid: false, error: 'Missing file name' }
+  }
+  
+  if (!document.file_path) {
+    return { valid: false, error: 'Missing file path' }
+  }
+  
   // Validate file type - expanded to include more document formats
   const allowedTypes = [
     // PDF
@@ -94,7 +111,7 @@ function validateDocumentFile(document: DocumentRecord): { valid: boolean; error
   }
   
   // Validate file path format
-  if (!document.file_path || !document.file_path.startsWith(document.event_id + '/')) {
+  if (!document.file_path.startsWith(document.event_id + '/')) {
     return { valid: false, error: 'Invalid file path' }
   }
   
@@ -109,6 +126,9 @@ serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
+
+  // Declare document_id outside try block for error handling
+  let document_id: string | undefined = undefined
 
   try {
     // Initialize Supabase client
@@ -135,7 +155,9 @@ serve(async (req) => {
     }
 
     // Parse request body
-    const { document_id, event_id } = await req.json()
+    const body = await req.json()
+    document_id = body.document_id
+    const event_id = body.event_id
 
     // Validate UUID format
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -162,6 +184,14 @@ serve(async (req) => {
       .eq('id', document_id)
       .eq('event_id', event_id)
       .single()
+
+    if (docError || !document) {
+      console.error('Document fetch error:', docError)
+      return new Response(
+        JSON.stringify({ error: 'Document not found or access denied' }),
+        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
 
     // Server-side file validation
     const validationResult = validateDocumentFile(document)
@@ -365,9 +395,24 @@ serve(async (req) => {
       )
     }
 
+    // Check if OpenAI API key is configured
+    const openaiApiKey = Deno.env.get('OPENAI_API_KEY')
+    if (!openaiApiKey) {
+      console.error('OPENAI_API_KEY not configured')
+      await supabaseClient
+        .from('event_documents')
+        .update({ processing_status: 'error' })
+        .eq('id', document_id)
+      
+      return new Response(
+        JSON.stringify({ error: 'AI service not configured' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
     // Initialize OpenAI client
     const openai = new OpenAI({
-      apiKey: Deno.env.get('OPENAI_API_KEY'),
+      apiKey: openaiApiKey,
     })
 
     // Prepare event context for AI prompt
@@ -474,8 +519,38 @@ Rules:
 
   } catch (error) {
     console.error('Edge function error:', error)
+    console.error('Error details:', {
+      message: error?.message,
+      stack: error?.stack,
+      name: error?.name
+    })
+    
+    // Try to update document status to error if we have document_id
+    if (document_id) {
+      try {
+        const supabaseClient = createClient(
+          Deno.env.get('SUPABASE_URL') ?? '',
+          Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+          {
+            global: {
+              headers: { Authorization: req.headers.get('Authorization')! },
+            },
+          }
+        )
+        await supabaseClient
+          .from('event_documents')
+          .update({ processing_status: 'error' })
+          .eq('id', document_id)
+      } catch (updateError) {
+        console.error('Failed to update document status:', updateError)
+      }
+    }
+    
     return new Response(
-      JSON.stringify({ error: 'Internal server error' }),
+      JSON.stringify({ 
+        error: 'Internal server error',
+        details: error?.message || 'Unknown error'
+      }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   }

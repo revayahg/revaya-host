@@ -142,13 +142,38 @@ window.aiDocumentAPI = {
             );
 
             if (error) {
-                throw new Error(`AI processing failed: ${error.message}`);
+                // Extract more detailed error message
+                const errorMessage = error.message || 'Unknown error';
+                const errorDetails = error.context?.error || data?.error || error.details;
+                
+                let fullMessage = `AI processing failed: ${errorMessage}`;
+                if (errorDetails && errorDetails !== errorMessage) {
+                    fullMessage += ` (${errorDetails})`;
+                }
+                
+                throw new Error(fullMessage);
+            }
+
+            if (!data || !data.suggestions) {
+                throw new Error('No suggestions returned from AI analysis');
             }
 
             return data.suggestions || [];
 
         } catch (error) {
             console.error('Process document error:', error);
+            
+            // Provide more user-friendly error messages
+            if (error.message?.includes('AI service not configured')) {
+                throw new Error('AI service is not configured. Please contact support.');
+            } else if (error.message?.includes('Document not found')) {
+                throw new Error('Document not found. Please try uploading again.');
+            } else if (error.message?.includes('Invalid file')) {
+                throw new Error('Invalid file format. Please upload a valid document.');
+            } else if (error.message?.includes('timeout') || error.message?.includes('timeout')) {
+                throw new Error('Processing timed out. Please try again.');
+            }
+            
             throw error;
         }
     },

@@ -188,21 +188,6 @@ function LocationAutocomplete({
 
       const providers = [
         {
-          name: 'mapsCo',
-          buildUrl: (query) => {
-            const params = new URLSearchParams({
-              q: query,
-              format: 'json',
-              addressdetails: '1',
-              limit: '8',
-              dedupe: '1',
-              extratags: '0'
-            });
-            return `https://geocode.maps.co/search?${params.toString()}`;
-          },
-          formatter: parseNominatimLike
-        },
-        {
           name: 'photon',
           buildUrl: (query) => {
             const params = new URLSearchParams({
@@ -230,6 +215,7 @@ function LocationAutocomplete({
           },
           formatter: parseNominatimLike
         }
+        // Note: mapsCo removed due to CORS and API key requirements in production
       ];
 
       const timeoutId = setTimeout(async () => {
@@ -249,6 +235,7 @@ function LocationAutocomplete({
               });
 
               if (!response.ok) {
+                // Skip this provider and try the next one
                 throw new Error(`Location lookup failed with status ${response.status}`);
               }
 
@@ -259,10 +246,18 @@ function LocationAutocomplete({
                 break;
               }
             } catch (providerError) {
+              // Handle CORS errors, network errors, and other failures gracefully
+              // Log only in development to avoid console noise in production
+              if (typeof console !== 'undefined' && console.debug && 
+                  (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+                console.debug(`Provider ${provider.name} failed:`, providerError.message);
+              }
+              
               lastError = providerError;
               if (controller.signal.aborted) {
                 throw providerError;
               }
+              // Continue to next provider
               continue;
             }
           }
