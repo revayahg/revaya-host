@@ -129,8 +129,11 @@ serve(async (req) => {
   const origin = req.headers.get('origin')
   const corsHeaders = getCorsHeaders(origin)
   
+  console.log('🚀 Edge function started, method:', req.method)
+  
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
+    console.log('✅ CORS preflight handled')
     return new Response('ok', { headers: corsHeaders })
   }
 
@@ -138,10 +141,23 @@ serve(async (req) => {
   let document_id: string | undefined = undefined
 
   try {
+    console.log('📥 Processing request...')
+    
     // Initialize Supabase client
+    const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? ''
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? ''
+    
+    if (!supabaseUrl || !supabaseAnonKey) {
+      console.error('❌ Missing Supabase configuration')
+      return new Response(
+        JSON.stringify({ error: 'Server configuration error' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+    
     const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      supabaseUrl,
+      supabaseAnonKey,
       {
         global: {
           headers: { Authorization: req.headers.get('Authorization')! },
@@ -150,19 +166,49 @@ serve(async (req) => {
     )
 
     // Get the user from the request
+    console.log('🔐 Authenticating user...')
     const {
       data: { user },
+      error: authError
     } = await supabaseClient.auth.getUser()
 
+    if (authError) {
+      console.error('❌ Auth error:', authError)
+      return new Response(
+        JSON.stringify({ error: 'Authentication failed', details: authError.message }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
     if (!user) {
+      console.error('❌ No user found')
       return new Response(
         JSON.stringify({ error: 'Authentication required' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
+    
+    console.log('✅ User authenticated:', user.id)
 
     // Parse request body
-    const body = await req.json()
+    console.log('📝 Parsing request body...')
+    let body
+    try {
+      const rawBody = await req.text()
+      console.log('📝 Raw request body length:', rawBody.length)
+      body = JSON.parse(rawBody)
+      console.log('✅ Request body parsed:', { document_id: body.document_id, event_id: body.event_id })
+    } catch (parseError: any) {
+      console.error('❌ Failed to parse request body:', parseError)
+      return new Response(
+        JSON.stringify({ 
+          error: 'Invalid request body',
+          details: parseError.message 
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+    
     document_id = body.document_id
     const event_id = body.event_id
 
@@ -185,6 +231,7 @@ serve(async (req) => {
     }
 
     // Fetch document record and verify permissions
+    console.log('📄 Fetching document:', document_id, 'for event:', event_id)
     const { data: document, error: docError } = await supabaseClient
       .from('event_documents')
       .select('*')
@@ -192,17 +239,29 @@ serve(async (req) => {
       .eq('event_id', event_id)
       .single()
 
-    if (docError || !document) {
-      console.error('Document fetch error:', docError)
+    if (docError) {
+      console.error('❌ Document fetch error:', docError)
       return new Response(
-        JSON.stringify({ error: 'Document not found or access denied' }),
+        JSON.stringify({ error: 'Document not found or access denied', details: docError.message }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
+    
+    if (!document) {
+      console.error('❌ Document not found')
+      return new Response(
+        JSON.stringify({ error: 'Document not found' }),
+        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+    
+    console.log('✅ Document found:', document.file_name, 'Type:', document.file_type, 'Size:', document.file_size)
 
     // Server-side file validation
+    console.log('🔍 Validating document file...')
     const validationResult = validateDocumentFile(document)
     if (!validationResult.valid) {
+      console.error('❌ Document validation failed:', validationResult.error)
       // Update document status to error
       await supabaseClient
         .from('event_documents')
@@ -213,16 +272,19 @@ serve(async (req) => {
         .eq('id', document_id)
       
       return new Response(
-        JSON.stringify({ error: 'Invalid file data' }),
+        JSON.stringify({ error: 'Invalid file data', details: validationResult.error }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
+    console.log('✅ Document validation passed')
 
     // Update status to processing
+    console.log('🔄 Updating document status to processing...')
     await supabaseClient
       .from('event_documents')
       .update({ processing_status: 'processing' })
       .eq('id', document_id)
+    console.log('✅ Document status updated to processing')
 
     // Fetch event context
     const { data: event, error: eventError } = await supabaseClient
@@ -583,41 +645,57 @@ Rules:
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
 
-  } catch (error) {
-    console.error('Edge function error:', error)
-    console.error('Error details:', {
+  } catch (error: any) {
+    console.error('❌ Edge function error:', error)
+    console.error('❌ Error details:', {
       message: error?.message,
       stack: error?.stack,
-      name: error?.name
+      name: error?.name,
+      cause: error?.cause
     })
     
     // Try to update document status to error if we have document_id
     if (document_id) {
       try {
-        const supabaseClient = createClient(
-          Deno.env.get('SUPABASE_URL') ?? '',
-          Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-          {
-            global: {
-              headers: { Authorization: req.headers.get('Authorization')! },
-            },
-          }
-        )
-        await supabaseClient
-          .from('event_documents')
-          .update({ processing_status: 'error' })
-          .eq('id', document_id)
+        const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? ''
+        const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? ''
+        if (supabaseUrl && supabaseAnonKey) {
+          const supabaseClient = createClient(
+            supabaseUrl,
+            supabaseAnonKey,
+            {
+              global: {
+                headers: { Authorization: req.headers.get('Authorization')! },
+              },
+            }
+          )
+          await supabaseClient
+            .from('event_documents')
+            .update({ 
+              processing_status: 'error',
+              ai_suggestions: { error: error?.message || 'Unknown error' }
+            })
+            .eq('id', document_id)
+          console.log('✅ Document status updated to error')
+        }
       } catch (updateError) {
-        console.error('Failed to update document status:', updateError)
+        console.error('❌ Failed to update document status:', updateError)
       }
     }
     
+    const errorResponse = {
+      error: 'Internal server error',
+      details: error?.message || 'Unknown error',
+      errorType: error?.constructor?.name || 'Error',
+      timestamp: new Date().toISOString()
+    }
+    
+    console.error('❌ Returning error response:', errorResponse)
+    
     return new Response(
-      JSON.stringify({ 
-        error: 'Internal server error',
-        details: error?.message || 'Unknown error'
-      }),
+      JSON.stringify(errorResponse),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   }
 })
+
