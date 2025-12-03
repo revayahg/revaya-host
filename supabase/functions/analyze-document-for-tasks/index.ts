@@ -511,31 +511,38 @@ serve(async (req) => {
     const eventDate = event.start_date || event.end_date || event.date
     const eventDateStr = eventDate ? new Date(eventDate).toLocaleDateString() : 'TBD'
     
-    // Create AI prompt
-    const prompt = `You are an event planning assistant analyzing documents to extract actionable tasks.
+    // Create AI prompt - emphasize document content over event context
+    console.log('📝 Creating AI prompt with extracted text length:', extractedText.length)
+    console.log('📝 Extracted text preview (first 500 chars):', extractedText.substring(0, 500))
+    
+    const prompt = `You are an event planning assistant. Your job is to analyze the DOCUMENT CONTENT below and extract ONLY the specific, actionable tasks that are actually mentioned or implied in the document.
 
-Event: ${event.name}
-Date: ${eventDateStr}
-Location: ${event.location || 'TBD'}
-Event Type: ${event.event_type || 'General Event'}
+CRITICAL INSTRUCTION: You must base your tasks EXCLUSIVELY on what is written in the document content. Do NOT invent generic tasks based on the event name or type. If the document doesn't mention a task, don't create it.
 
-Document content:
+Document content to analyze:
 ${extractedText.substring(0, 8000)} ${extractedText.length > 8000 ? '...[truncated]' : ''}
 
-Generate 1-10 specific, actionable tasks as JSON array:
+Event context (for reference only - do NOT use this to generate tasks):
+- Event: ${event.name}
+- Date: ${eventDateStr}
+- Location: ${event.location || 'TBD'}
+
+Generate 1-10 specific tasks as JSON array. Each task MUST be directly related to content in the document:
 [{
-  "title": "Task title (max 100 chars)",
-  "description": "Detailed description",
+  "title": "Task title (max 100 chars) - must come from document",
+  "description": "Description based on document content",
   "priority": "high|medium|low",
   "suggested_due_date": "YYYY-MM-DD or null",
-  "reasoning": "Brief explanation"
+  "reasoning": "Why this task is needed based on the document"
 }]
 
-Rules:
-- Focus on specific, actionable items
-- Prioritize by urgency/importance
-- Suggest realistic due dates before event
-- Avoid duplicates/generic tasks
+RULES:
+- Extract tasks ONLY from document content
+- If document is an invoice: create tasks about payment, billing, invoice items
+- If document is a contract: create tasks about contract terms, deadlines, obligations
+- If document lists tasks: extract those exact tasks
+- If document mentions dates: use those dates
+- Do NOT create generic event planning tasks
 - Return valid JSON only`
 
     // Call OpenAI API
@@ -566,14 +573,25 @@ Rules:
       let errorDetails = openaiError.message || 'Unknown error'
       let statusCode = 500
       
-      if (openaiError.code === 'insufficient_quota' || openaiError.error?.code === 'insufficient_quota') {
+      // Check for quota errors first (more specific)
+      if (openaiError.code === 'insufficient_quota' || 
+          openaiError.error?.code === 'insufficient_quota' ||
+          openaiError.error?.type === 'insufficient_quota') {
         errorMessage = 'AI service quota exceeded'
-        errorDetails = 'The AI service has reached its usage limit. Please check your OpenAI account billing or contact support.'
+        errorDetails = 'The AI service has reached its usage limit. Please check your OpenAI account billing at https://platform.openai.com/account/billing'
         statusCode = 503 // Service Unavailable
       } else if (openaiError.status === 429) {
-        errorMessage = 'AI service rate limit exceeded'
-        errorDetails = 'Too many requests. Please try again in a few moments.'
-        statusCode = 429
+        // 429 can mean rate limit OR quota - check the error message
+        const errorMsg = (openaiError.message || '').toLowerCase()
+        if (errorMsg.includes('quota') || errorMsg.includes('billing')) {
+          errorMessage = 'AI service quota exceeded'
+          errorDetails = 'The AI service has reached its usage limit. Please check your OpenAI account billing at https://platform.openai.com/account/billing'
+          statusCode = 503
+        } else {
+          errorMessage = 'AI service rate limit exceeded'
+          errorDetails = 'Too many requests. Please try again in a few moments.'
+          statusCode = 429
+        }
       } else if (openaiError.status === 401) {
         errorMessage = 'AI service authentication failed'
         errorDetails = 'The AI service API key is invalid or expired.'
