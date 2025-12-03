@@ -58,7 +58,14 @@ function validateDocumentFile(document: DocumentRecord): { valid: boolean; error
     return { valid: false, error: 'Missing file type' }
   }
   
-  if (typeof document.file_size !== 'number') {
+  // Handle file_size as number, string, or bigint from database
+  const fileSize = typeof document.file_size === 'string' 
+    ? parseInt(document.file_size, 10) 
+    : typeof document.file_size === 'bigint'
+    ? Number(document.file_size)
+    : document.file_size
+    
+  if (typeof fileSize !== 'number' || isNaN(fileSize) || fileSize <= 0) {
     return { valid: false, error: 'Missing or invalid file size' }
   }
   
@@ -101,7 +108,7 @@ function validateDocumentFile(document: DocumentRecord): { valid: boolean; error
   
   // Validate file size (10MB limit)
   const maxSize = 10 * 1024 * 1024 // 10MB
-  if (document.file_size > maxSize) {
+  if (fileSize > maxSize) {
     return { valid: false, error: 'File size exceeds limit' }
   }
   
@@ -237,21 +244,44 @@ serve(async (req) => {
     }
 
     // Download file from Supabase Storage
+    console.log('Downloading file from storage:', document.file_path)
     const { data: fileData, error: fileError } = await supabaseClient.storage
       .from('event-documents')
       .download(document.file_path)
 
-    if (fileError || !fileData) {
+    if (fileError) {
+      console.error('File download error:', fileError)
       await supabaseClient
         .from('event_documents')
-        .update({ processing_status: 'error' })
+        .update({ 
+          processing_status: 'error',
+          ai_suggestions: { error: `File download failed: ${fileError.message}` }
+        })
         .eq('id', document_id)
       
       return new Response(
-        JSON.stringify({ error: 'Failed to download file' }),
+        JSON.stringify({ error: `Failed to download file: ${fileError.message}` }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
+    
+    if (!fileData) {
+      console.error('File data is null or undefined')
+      await supabaseClient
+        .from('event_documents')
+        .update({ 
+          processing_status: 'error',
+          ai_suggestions: { error: 'File data is empty' }
+        })
+        .eq('id', document_id)
+      
+      return new Response(
+        JSON.stringify({ error: 'File data is empty' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+    
+    console.log('File downloaded successfully, size:', fileData.size)
 
     // Extract text based on file type
     let extractedText = ''
@@ -447,26 +477,62 @@ Rules:
 - Return valid JSON only`
 
     // Call OpenAI API
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [
-        {
-          role: "system",
-          content: "You are an expert event planning assistant. Always respond with valid JSON arrays only."
-        },
-        {
-          role: "user",
-          content: prompt
-        }
-      ],
-      temperature: 0.3,
-      max_tokens: 2000,
-    })
+    console.log('Calling OpenAI API...')
+    let completion
+    try {
+      completion = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [
+          {
+            role: "system",
+            content: "You are an expert event planning assistant. Always respond with valid JSON arrays only."
+          },
+          {
+            role: "user",
+            content: prompt
+          }
+        ],
+        temperature: 0.3,
+        max_tokens: 2000,
+      })
+      console.log('OpenAI API call successful')
+    } catch (openaiError: any) {
+      console.error('OpenAI API error:', openaiError)
+      await supabaseClient
+        .from('event_documents')
+        .update({ 
+          processing_status: 'error',
+          ai_suggestions: { error: `OpenAI API error: ${openaiError.message || 'Unknown error'}` }
+        })
+        .eq('id', document_id)
+      
+      return new Response(
+        JSON.stringify({ 
+          error: 'AI service error',
+          details: openaiError.message || 'Failed to call OpenAI API'
+        }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
 
     const aiResponse = completion.choices[0]?.message?.content
     if (!aiResponse) {
-      throw new Error('No response from OpenAI')
+      console.error('No response content from OpenAI')
+      await supabaseClient
+        .from('event_documents')
+        .update({ 
+          processing_status: 'error',
+          ai_suggestions: { error: 'No response from AI service' }
+        })
+        .eq('id', document_id)
+      
+      return new Response(
+        JSON.stringify({ error: 'No response from AI service' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
     }
+    
+    console.log('OpenAI response received, length:', aiResponse.length)
 
     // Parse AI response
     let suggestions: TaskSuggestion[]
