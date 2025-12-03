@@ -166,6 +166,10 @@ window.aiDocumentAPI = {
             // Provide more user-friendly error messages
             if (error.message?.includes('AI service not configured')) {
                 throw new Error('AI service is not configured. Please contact support.');
+            } else if (error.message?.includes('quota exceeded') || error.message?.includes('quota') || data?.code === 'insufficient_quota') {
+                throw new Error('AI service quota has been exceeded. Please contact support to add credits to your OpenAI account.');
+            } else if (error.message?.includes('rate limit')) {
+                throw new Error('AI service is temporarily busy. Please try again in a few moments.');
             } else if (error.message?.includes('Document not found')) {
                 throw new Error('Document not found. Please try uploading again.');
             } else if (error.message?.includes('Invalid file')) {

@@ -539,7 +539,7 @@ Rules:
 - Return valid JSON only`
 
     // Call OpenAI API
-    console.log('Calling OpenAI API...')
+    console.log('🤖 Calling OpenAI API...')
     let completion
     try {
       completion = await openai.chat.completions.create({
@@ -557,23 +557,48 @@ Rules:
         temperature: 0.3,
         max_tokens: 2000,
       })
-      console.log('OpenAI API call successful')
+      console.log('✅ OpenAI API call successful')
     } catch (openaiError: any) {
-      console.error('OpenAI API error:', openaiError)
+      console.error('❌ OpenAI API error:', openaiError)
+      
+      // Handle specific OpenAI error types
+      let errorMessage = 'AI service temporarily unavailable'
+      let errorDetails = openaiError.message || 'Unknown error'
+      let statusCode = 500
+      
+      if (openaiError.code === 'insufficient_quota' || openaiError.error?.code === 'insufficient_quota') {
+        errorMessage = 'AI service quota exceeded'
+        errorDetails = 'The AI service has reached its usage limit. Please check your OpenAI account billing or contact support.'
+        statusCode = 503 // Service Unavailable
+      } else if (openaiError.status === 429) {
+        errorMessage = 'AI service rate limit exceeded'
+        errorDetails = 'Too many requests. Please try again in a few moments.'
+        statusCode = 429
+      } else if (openaiError.status === 401) {
+        errorMessage = 'AI service authentication failed'
+        errorDetails = 'The AI service API key is invalid or expired.'
+        statusCode = 500
+      }
+      
       await supabaseClient
         .from('event_documents')
         .update({ 
           processing_status: 'error',
-          ai_suggestions: { error: `OpenAI API error: ${openaiError.message || 'Unknown error'}` }
+          ai_suggestions: { 
+            error: errorMessage,
+            details: errorDetails,
+            code: openaiError.code || openaiError.error?.code
+          }
         })
         .eq('id', document_id)
       
       return new Response(
         JSON.stringify({ 
-          error: 'AI service error',
-          details: openaiError.message || 'Failed to call OpenAI API'
+          error: errorMessage,
+          details: errorDetails,
+          code: openaiError.code || openaiError.error?.code
         }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: statusCode, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
