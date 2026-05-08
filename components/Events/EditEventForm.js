@@ -638,8 +638,8 @@ function EditEventForm({ eventId }) {
     return React.createElement('div', { className: 'max-w-6xl mx-auto p-4 sm:p-6 mobile-optimized' }, [
       React.createElement('div', { key: 'header', className: 'mb-6' }, [
         React.createElement('div', { key: 'title-row', className: 'flex flex-col lg:flex-row lg:justify-between lg:items-center mb-4 gap-4' }, [
-          React.createElement('h1', { key: 'title', className: 'text-xl sm:text-2xl font-bold text-gray-900' }, 
-            `Edit: ${formData.name || formData.title || 'Untitled Event'}`),
+          React.createElement('h1', { key: 'title', className: 'text-xl sm:text-2xl font-bold text-gray-900' },
+            `Manage: ${formData.name || formData.title || 'Untitled Event'}`),
           React.createElement('div', { key: 'actions', className: 'flex flex-wrap gap-2 sm:gap-3' }, 
             [
               hasUnsavedChanges && activeTab !== 'budget' && activeTab !== 'tasks' && React.createElement('span', { key: 'unsaved', className: 'text-sm text-amber-600 self-center' }, 
@@ -677,7 +677,7 @@ function EditEventForm({ eventId }) {
         React.createElement('div', { key: 'tabs', className: 'border-b border-gray-200' },
           React.createElement('nav', { key: 'nav', className: 'flex flex-wrap gap-2 sm:gap-4 lg:gap-8 overflow-x-auto' }, 
             [
-              ['basics', 'Event Details'],
+              ['basics', 'Edit Details'],
               ['budget', 'Budget'],
               ['tasks', 'Tasks'],
               ['collaborators', 'Collaborators'],
