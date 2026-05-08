@@ -183,9 +183,9 @@ function Dashboard({ route = '' }) {
           // This excludes collaborative events where user only has a role
           const { data, error } = await window.supabaseClient
             .from('events')
-            .select('id, name, start_date, end_date, location, status, created_at, created_by, user_id, event_schedule')
+            .select('id, name, start_date, end_date, location, status, created_at, updated_at, created_by, user_id, event_schedule')
             .or(`created_by.eq.${session.user.id},user_id.eq.${session.user.id}`)
-            .order('created_at', { ascending: false })
+            .order('updated_at', { ascending: false })
             .limit(10);
           
           if (error) {
