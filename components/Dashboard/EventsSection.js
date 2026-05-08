@@ -186,8 +186,8 @@ function EventsSection({ events = [], onDeleteEvent, loading = false }) {
                                 href: `#/event/edit/${event.id}`,
                                 className: 'inline-flex items-center px-3 py-1.5 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50'
                             }, [
-                                React.createElement('i', { key: 'icon', className: 'fas fa-cog mr-2' }),
-                                'Manage'
+                                React.createElement('i', { key: 'icon', className: 'fas fa-edit mr-2' }),
+                                'Edit'
                             ]),
                             React.createElement('button', {
                                 key: 'delete',
