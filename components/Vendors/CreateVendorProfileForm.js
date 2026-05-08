@@ -27,11 +27,45 @@ function CreateVendorProfileForm() {
     const [loading, setLoading] = React.useState(false);
     const [error, setError] = React.useState(null);
     const [imageProcessing, setImageProcessing] = React.useState(false);
+    const [existingProfiles, setExistingProfiles] = React.useState([]);
+    const [preFillDismissed, setPreFillDismissed] = React.useState(false);
     const submittingRef = React.useRef(false);
     const context = React.useContext(window.AuthContext || React.createContext({}));
     const { user } = context;
 
     const socialPlatforms = ['Instagram', 'Facebook', 'Twitter', 'LinkedIn', 'Website', 'Other'];
+
+    React.useEffect(() => {
+      if (!user?.id) return;
+      window.supabaseClient
+        .from('vendor_profiles')
+        .select('*')
+        .eq('user_id', user.id)
+        .limit(5)
+        .then(({ data }) => {
+          if (data && data.length > 0) setExistingProfiles(data);
+        });
+    }, [user?.id]);
+
+    const preFillFromProfile = (profile) => {
+      setFormData({
+        company: profile.company || '',
+        name: profile.name || '',
+        email: profile.email || '',
+        phone: profile.phone || '',
+        bio: profile.bio || '',
+        category: profile.category || '',
+        is_public: profile.is_public ?? true,
+        profile_picture_url: profile.profile_picture_url || null
+      });
+      setSocialMedia(Array.isArray(profile.social_media) ? profile.social_media : []);
+      setServices(Array.isArray(profile.services) ? profile.services : []);
+      setServiceAreas(Array.isArray(profile.service_areas) ? profile.service_areas : []);
+      setInsurance(profile.insurance || { provider: '', policyNumber: '', expiryDate: '', coverage: '' });
+      if (profile.profile_picture_url) setProfilePicturePreview(profile.profile_picture_url);
+      setPreFillDismissed(true);
+      window.toast?.success('Profile info copied!');
+    };
     const MAX_PORTFOLIO_IMAGES = 10;
 
     const handleInputChange = (e) => {
@@ -185,6 +219,48 @@ function CreateVendorProfileForm() {
             <p className="text-gray-600">Set up your vendor profile to start connecting with event organizers.</p>
           </div>
           
+          {existingProfiles.length > 0 && !preFillDismissed && (
+            <div className="mb-6 bg-indigo-50 border border-indigo-200 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center gap-3">
+              <div className="flex-1">
+                <p className="text-sm font-medium text-indigo-800">You already have a vendor profile. Want to copy your organization info into this form?</p>
+                {existingProfiles.length > 1 ? (
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {existingProfiles.map(p => (
+                      <button
+                        key={p.id}
+                        type="button"
+                        onClick={() => preFillFromProfile(p)}
+                        className="text-xs px-3 py-1 bg-indigo-600 text-white rounded-full hover:bg-indigo-700"
+                      >
+                        {p.company || p.name || 'Unnamed'}
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-indigo-600 mt-1">{existingProfiles[0].company || existingProfiles[0].name}</p>
+                )}
+              </div>
+              <div className="flex gap-2 shrink-0">
+                {existingProfiles.length === 1 && (
+                  <button
+                    type="button"
+                    onClick={() => preFillFromProfile(existingProfiles[0])}
+                    className="px-4 py-2 bg-indigo-600 text-white text-sm rounded-lg hover:bg-indigo-700"
+                  >
+                    Copy Info
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setPreFillDismissed(true)}
+                  className="px-4 py-2 border border-indigo-300 text-indigo-700 text-sm rounded-lg hover:bg-indigo-100"
+                >
+                  No thanks
+                </button>
+              </div>
+            </div>
+          )}
+
           <form onSubmit={handleSubmit} className="space-y-8 bg-white shadow-lg rounded-xl p-8">
             <window.EditVendorBasicFields 
               formData={formData}
