@@ -27,6 +27,7 @@ function CreateVendorProfileForm() {
     const [loading, setLoading] = React.useState(false);
     const [error, setError] = React.useState(null);
     const [imageProcessing, setImageProcessing] = React.useState(false);
+    const submittingRef = React.useRef(false);
     const context = React.useContext(window.AuthContext || React.createContext({}));
     const { user } = context;
 
@@ -120,6 +121,8 @@ function CreateVendorProfileForm() {
 
     const handleSubmit = async (e) => {
       e.preventDefault();
+      if (submittingRef.current) return;
+      submittingRef.current = true;
       try {
         setLoading(true);
         setError(null);
@@ -170,6 +173,7 @@ function CreateVendorProfileForm() {
         reportError(err);
       } finally {
         setLoading(false);
+        submittingRef.current = false;
       }
     };
 
