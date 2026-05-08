@@ -1,24 +1,5 @@
 function VendorBasicInfo({ vendor, onInputChange, onSocialMediaChange }) {
   try {
-    const normalizeUrl = (value) => {
-      if (!value || !value.trim()) return value;
-      const v = value.trim();
-      if (/^https?:\/\//i.test(v)) return v;
-      return `https://${v}`;
-    };
-
-    const handleUrlBlur = (e) => {
-      const normalized = normalizeUrl(e.target.value);
-      if (normalized !== e.target.value) {
-        onInputChange({ target: { name: e.target.name, value: normalized } });
-      }
-    };
-
-    const handleSocialBlur = (platform, value) => {
-      const normalized = normalizeUrl(value);
-      if (normalized !== value) onSocialMediaChange(platform, normalized);
-    };
-
     return (
       <section className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -84,13 +65,12 @@ function VendorBasicInfo({ vendor, onInputChange, onSocialMediaChange }) {
               Website
             </label>
             <input
-              type="text"
+              type="url"
               name="website"
               value={vendor.website}
               onChange={onInputChange}
-              onBlur={handleUrlBlur}
               className="w-full px-3 py-2 border border-gray-300 rounded-md"
-              placeholder="https://yourwebsite.com"
+              placeholder="https://"
             />
           </div>
           <div>
@@ -129,12 +109,11 @@ function VendorBasicInfo({ vendor, onInputChange, onSocialMediaChange }) {
                   {platform}
                 </label>
                 <input
-                  type="text"
+                  type="url"
                   value={value}
                   onChange={(e) => onSocialMediaChange(platform, e.target.value)}
-                  onBlur={(e) => handleSocialBlur(platform, e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                  placeholder={`${platform} URL or username`}
+                  placeholder={`${platform} URL`}
                 />
               </div>
             ))}

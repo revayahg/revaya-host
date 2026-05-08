@@ -3,22 +3,6 @@ function EditVendorContactFields({
   handleAddSocialMedia, handleSocialMediaChange, handleRemoveSocialMedia 
 }) {
   try {
-    const normalizeHandle = (platform, value) => {
-      if (!value) return value;
-      const v = value.trim();
-      const p = (platform || '').toLowerCase();
-      if (p === 'website') return v;
-      try {
-        if (v.startsWith('http://') || v.startsWith('https://')) {
-          const url = new URL(v);
-          const parts = url.pathname.split('/').filter(Boolean);
-          const handle = parts[parts.length - 1] || v;
-          return `@${handle.replace(/^@/, '')}`;
-        }
-      } catch (e) {}
-      return v.startsWith('@') ? v : `@${v}`;
-    };
-
     // Provide default values to prevent undefined errors
     const safeSocialMedia = Array.isArray(socialMedia) ? socialMedia : [];
     const safeSocialPlatforms = Array.isArray(socialPlatforms) ? socialPlatforms : [
@@ -70,13 +54,7 @@ function EditVendorContactFields({
               type: 'text',
               value: social?.handle || '',
               onChange: (e) => handleSocialMediaChange && handleSocialMediaChange(index, 'handle', e.target.value),
-              onBlur: (e) => {
-                const normalized = normalizeHandle(social?.platform, e.target.value);
-                if (normalized !== e.target.value && handleSocialMediaChange) {
-                  handleSocialMediaChange(index, 'handle', normalized);
-                }
-              },
-              placeholder: '@handle or full profile URL',
+              placeholder: '@yourcompany or profile name',
               className: 'flex-1 px-3 py-2 border-2 border-gray-200 rounded-lg focus:border-indigo-500'
             }),
             React.createElement('button', {
