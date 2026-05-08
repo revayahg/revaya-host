@@ -11,6 +11,18 @@ function VendorContactSection({ vendor }) {
       return phone;
     };
 
+    const getSocialUrl = (platform, handle) => {
+      if (!handle) return null;
+      const p = platform.toLowerCase();
+      const h = handle.replace(/^@/, '');
+      if (p === 'instagram') return `https://instagram.com/${h}`;
+      if (p === 'twitter') return `https://twitter.com/${h}`;
+      if (p === 'facebook') return `https://facebook.com/${h}`;
+      if (p === 'linkedin') return `https://linkedin.com/in/${h}`;
+      if (p === 'website') return handle.startsWith('http') ? handle : `https://${handle}`;
+      return null;
+    };
+
     const getSocialIcon = (platform) => {
       const platformLower = platform.toLowerCase();
       const iconMap = {
@@ -51,17 +63,22 @@ function VendorContactSection({ vendor }) {
             <div>
               <h3 className="font-medium text-gray-700 mb-2">Social Media</h3>
               <div className="flex flex-wrap gap-2">
-                {socialMedia.map((social, index) => (
-                  <a
-                    key={index}
-                    href="#"
-                    className="flex items-center px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-700 hover:text-blue-600 transition-colors"
-                    title={`${social.platform}: ${social.handle}`}
-                  >
-                    <i className={`${getSocialIcon(social.platform)} mr-2`}></i>
-                    <span className="text-sm">{social.handle}</span>
-                  </a>
-                ))}
+                {socialMedia.map((social, index) => {
+                  const url = getSocialUrl(social.platform, social.handle);
+                  return (
+                    <a
+                      key={index}
+                      href={url || '#'}
+                      target={url ? '_blank' : undefined}
+                      rel={url ? 'noopener noreferrer' : undefined}
+                      className="flex items-center px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-700 hover:text-blue-600 transition-colors"
+                      title={`${social.platform}: ${social.handle}`}
+                    >
+                      <i className={`${getSocialIcon(social.platform)} mr-2`}></i>
+                      <span className="text-sm">{social.handle}</span>
+                    </a>
+                  );
+                })}
               </div>
             </div>
           )}

@@ -3,6 +3,7 @@ function ViewVendorProfile({ vendorId }) {
     const [vendor, setVendor] = React.useState(null);
     const [loading, setLoading] = React.useState(true);
     const [error, setError] = React.useState(null);
+    const [logoError, setLogoError] = React.useState(false);
     const context = React.useContext(window.AuthContext || React.createContext({}));
     const { user } = context;
 
@@ -87,23 +88,18 @@ function ViewVendorProfile({ vendorId }) {
               {/* Logo/Profile Picture */}
               <div className="md:w-1/4">
                 <div className="w-full aspect-square rounded-lg overflow-hidden">
-                  {vendor.profile_picture_url ? (
-                    <img 
+                  {vendor.profile_picture_url && !logoError ? (
+                    <img
                       src={vendor.profile_picture_url}
                       alt={`${vendor.company || vendor.name}'s profile`}
                       className="w-full h-full object-cover"
-                      onError={(e) => {
-                        e.target.style.display = 'none';
-                        e.target.nextElementSibling.style.display = 'flex';
-                      }}
+                      onError={() => setLogoError(true)}
                     />
-                  ) : null}
-                  <div 
-                    className="w-full h-full bg-gray-100 flex items-center justify-center"
-                    style={{ display: vendor.profile_picture_url ? 'none' : 'flex' }}
-                  >
-                    <i className="fas fa-user-circle text-6xl text-gray-400"></i>
-                  </div>
+                  ) : (
+                    <div className="w-full h-full bg-gray-100 flex items-center justify-center">
+                      <i className="fas fa-user-circle text-6xl text-gray-400"></i>
+                    </div>
+                  )}
                 </div>
               </div>
               
