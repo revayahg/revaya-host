@@ -19,12 +19,35 @@ function GroupChatPanelV2({ eventId, currentUser }) {
   const [error, setError] = React.useState('');
 
   const scrollerRef = React.useRef(null);
+  const threadIdRef = React.useRef(null);
+  const unsubscribeRef = React.useRef(null);
 
   const scrollToBottom = React.useCallback(() => {
     const el = scrollerRef.current;
     if (!el) return;
     el.scrollTo({ top: el.scrollHeight, left: 0, behavior: 'auto' });
   }, []);
+
+  const subscribeToThread = React.useCallback((threadId) => {
+    if (unsubscribeRef.current || !threadId) return;
+    const unsub = window.messageAPIv2.onMessage(threadId, (newMsg) => {
+      if (newMsg.sender_id === currentUser?.id) return; // already shown via optimistic UI
+      setMessages(prev => {
+        if (prev.some(m => m.id === newMsg.id)) return prev;
+        return [...prev, newMsg];
+      });
+      // Fetch identity for new sender if not in cache
+      setIdentities(prev => {
+        if (prev[newMsg.sender_id]) return prev;
+        window.messageAPIv2.getUserIdentities([newMsg.sender_id]).then(ids => {
+          if (ids[0]) setIdentities(p => ({ ...p, [ids[0].user_id]: { name: ids[0].display_name, email: ids[0].email } }));
+        }).catch(() => {});
+        return prev;
+      });
+      setTimeout(scrollToBottom, 0);
+    });
+    unsubscribeRef.current = unsub;
+  }, [currentUser?.id, scrollToBottom]);
 
   const loadParticipants = React.useCallback(async () => {
     if (!eventId) return;
@@ -59,27 +82,26 @@ function GroupChatPanelV2({ eventId, currentUser }) {
       try {
         const { thread } = await window.messageAPIv2.ensureEventGroupThread(eventId);
         if (thread?.id) {
+          // Subscribe to real-time inserts (idempotent — only runs once)
+          if (!threadIdRef.current) {
+            threadIdRef.current = thread.id;
+            subscribeToThread(thread.id);
+          }
+
           const { data: participant } = await window.supabaseClient
             .from('message_participants')
             .select('last_read_at')
             .eq('thread_id', thread.id)
             .eq('user_id', currentUser.id)
             .single();
-          
+
           const lastRead = participant?.last_read_at;
           setLastReadAt(lastRead);
-          
-          // Count unread messages
+
           if (lastRead && msgs && msgs.length > 0) {
-            const unreadMessages = msgs.filter(m => 
-              m.sender_id !== currentUser.id && 
-              new Date(m.created_at) > new Date(lastRead)
-            );
-            setUnreadCount(unreadMessages.length);
+            setUnreadCount(msgs.filter(m => m.sender_id !== currentUser.id && new Date(m.created_at) > new Date(lastRead)).length);
           } else if (!lastRead && msgs) {
-            // If never read, count all messages from others
-            const unreadMessages = msgs.filter(m => m.sender_id !== currentUser.id);
-            setUnreadCount(unreadMessages.length);
+            setUnreadCount(msgs.filter(m => m.sender_id !== currentUser.id).length);
           }
         }
       } catch (error) {
@@ -146,13 +168,19 @@ function GroupChatPanelV2({ eventId, currentUser }) {
     }
     
     if (eventId && currentUser?.id) {
-      // Add a small delay to ensure initialization is complete
       const timer = setTimeout(() => {
         loadMessages();
         loadParticipants();
       }, 100);
-      
-      return () => clearTimeout(timer);
+
+      return () => {
+        clearTimeout(timer);
+        if (unsubscribeRef.current) {
+          unsubscribeRef.current();
+          unsubscribeRef.current = null;
+          threadIdRef.current = null;
+        }
+      };
     }
   }, [eventId, currentUser?.id, loadMessages, loadParticipants]);
 
@@ -282,13 +310,8 @@ function GroupChatPanelV2({ eventId, currentUser }) {
             try {
               const realMessage = await window.messageAPIv2.sendEventGroupMessage(eventId, text.trim());
               setMessages(prev => prev.map(m => m.id === tempId ? realMessage : m));
-              setPendingIds(prev => {
-                const next = new Set(prev);
-                next.delete(tempId);
-                return next;
-              });
-              
-              await window.messageAPIv2.markEventGroupAsRead(eventId);
+              setPendingIds(prev => { const next = new Set(prev); next.delete(tempId); return next; });
+              window.messageAPIv2.markEventGroupAsRead(eventId).catch(() => {});
               setTimeout(scrollToBottom, 0);
             } catch (error) {
               setErrorText(error?.message || 'Failed to send message');

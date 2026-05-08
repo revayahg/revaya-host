@@ -544,128 +544,60 @@
       }
 
 
-      // Create notifications for all event participants (except sender)
-      
-      if (window.notificationAPI) {
+      // Clear message cache so next load fetches fresh data
+      this.messageCache.delete(`messages_${eventId}`);
+
+      // Fire-and-forget: notifications, emails, and thread preview update
+      // These must NOT block the message return — they run in the background
+      ;(async () => {
         try {
-          
-          // Get all event participants
+          // Update thread preview
+          await this.sb
+            .from('message_threads')
+            .update({ last_message_preview: fmtPreview(body), last_message_at: new Date().toISOString() })
+            .eq('id', thread.id);
+        } catch {}
+
+        if (!window.notificationAPI) return;
+        try {
           const participants = await this.getEventParticipants(eventId);
-          const senderId = await this.getSafeUserId();
-          
-          // Get sender name for notification
+          const senderId = data.sender_id;
           const { data: senderProfile } = await this.sb
             .from('profiles')
             .select('first_name, last_name, email')
             .eq('id', senderId)
             .single();
-          
-          const senderName = senderProfile ? 
-            (senderProfile.first_name && senderProfile.last_name ? 
-              `${senderProfile.first_name} ${senderProfile.last_name}` : 
-              senderProfile.email) : 
-            'Someone';
+          const senderName = senderProfile
+            ? (senderProfile.first_name && senderProfile.last_name
+                ? `${senderProfile.first_name} ${senderProfile.last_name}`
+                : senderProfile.email)
+            : 'Someone';
 
-
-          // Create notifications for all participants except sender
-          let notificationCount = 0;
           for (const participant of participants) {
-            if (participant.user_id !== senderId) {
-              try {
-                const notificationData = {
-                  userId: participant.user_id,
-                  type: 'message',
-                  title: `New message from ${senderName}`,
-                  message: body.length > 100 ? body.substring(0, 100) + '...' : body,
-                  eventId: eventId,
-                  metadata: {
-                    thread_id: thread.id,
-                    sender_id: senderId,
-                    sender_name: senderName,
-                    message_id: data.id
-                  }
-                };
-                
-                const notificationResult = await window.notificationAPI.createNotification(notificationData);
-                
-                if (notificationResult) {
-                  notificationCount++;
-                } else {
-                }
-
-                // Send email notification with rate limiting
-                try {
-                  if (window.unifiedNotificationService && participant.email) {
-                    const emailResult = await window.unifiedNotificationService.sendChatMessageEmail(
-                      participant.email,
-                      senderName,
-                      thread.event_name || 'Event',
-                      eventId,
-                      body.length > 140 ? body.substring(0, 137) + '...' : body,
-                      participant.user_id
-                    );
-                    
-                    if (emailResult?.skipped) {
-                      console.log(`📧 Chat email skipped for ${participant.email}: ${emailResult.reason}`);
-                    } else {
-                      console.log(`✅ Chat email sent to ${participant.email}`);
-                    }
-                  }
-                } catch (emailError) {
-                  console.error('❌ Chat email notification failed (non-blocking):', emailError);
-                  // Don't fail message sending if email fails
-                }
-              } catch (notifError) {
-                // Don't fail message sending if notification fails
+            if (participant.user_id === senderId) continue;
+            try {
+              await window.notificationAPI.createNotification({
+                userId: participant.user_id,
+                type: 'message',
+                title: `New message from ${senderName}`,
+                message: body.length > 100 ? body.substring(0, 100) + '...' : body,
+                eventId,
+                metadata: { thread_id: thread.id, sender_id: senderId, sender_name: senderName, message_id: data.id }
+              });
+            } catch {}
+            try {
+              if (window.unifiedNotificationService && participant.email) {
+                await window.unifiedNotificationService.sendChatMessageEmail(
+                  participant.email, senderName, thread.event_name || 'Event',
+                  eventId, body.length > 140 ? body.substring(0, 137) + '...' : body, participant.user_id
+                );
               }
-            }
+            } catch {}
           }
-          
-          
-          // Dispatch events for real-time UI updates
-          if (window.EventBus && window.EventBus.emit) {
-            window.EventBus.emit('messageSent', { 
-              message: data, 
-              eventId: eventId, 
-              participants: participants.length 
-            });
-          }
-          
-          window.dispatchEvent(new CustomEvent('messageSent', { 
-            detail: { 
-              message: data, 
-              eventId: eventId, 
-              participants: participants.length 
-            } 
-          }));
-          
-          
-        } catch (notificationError) {
-          // Don't fail message sending if notification fails
-        }
-      } else {
-      }
 
-      // Update thread preview
-      try {
-        const updateData = {
-          last_message_preview: fmtPreview(body),
-          last_message_at: new Date().toISOString()
-        };
-        
-        const { error: updateError } = await this.sb
-          .from('message_threads')
-          .update(updateData)
-          .eq('id', thread.id);
-          
-        if (updateError) {
-        } else {
-        }
-      } catch (previewError) {
-      }
-
-      // Clear cache for this event since new message was added
-      this.clearEventCache(eventId);
+          window.dispatchEvent(new CustomEvent('messageSent', { detail: { message: data, eventId, participants: participants.length } }));
+        } catch {}
+      })();
 
       return data;
     },
