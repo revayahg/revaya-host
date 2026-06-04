@@ -5,6 +5,7 @@ function TaskManager({ eventId, event, tasks, onTasksChange }) {
         const [saving, setSaving] = React.useState(false);
         const [localTasks, setLocalTasks] = React.useState([]);
         const [loading, setLoading] = React.useState(true);
+        const [view, setView] = React.useState('kanban');
         const [filters, setFilters] = React.useState({
             priority: '',
             sortBy: 'created_at'
@@ -102,6 +103,40 @@ function TaskManager({ eventId, event, tasks, onTasksChange }) {
             };
         };
 
+        const getTimelineGroups = () => {
+            const tasks = getFilteredTasks();
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const tomorrow = new Date(today); tomorrow.setDate(today.getDate() + 1);
+            const weekEnd = new Date(today); weekEnd.setDate(today.getDate() + 7);
+            const nextWeekEnd = new Date(today); nextWeekEnd.setDate(today.getDate() + 14);
+
+            const groups = [
+                { key: 'overdue', label: 'Overdue', icon: 'fas fa-exclamation-circle', color: 'text-red-600', bg: 'bg-red-50 border-red-200', tasks: [] },
+                { key: 'today', label: 'Today', icon: 'fas fa-circle-dot', color: 'text-orange-600', bg: 'bg-orange-50 border-orange-200', tasks: [] },
+                { key: 'this_week', label: 'This Week', icon: 'fas fa-calendar-week', color: 'text-blue-600', bg: 'bg-blue-50 border-blue-200', tasks: [] },
+                { key: 'next_week', label: 'Next Week', icon: 'fas fa-calendar', color: 'text-indigo-600', bg: 'bg-indigo-50 border-indigo-200', tasks: [] },
+                { key: 'later', label: 'Later', icon: 'fas fa-hourglass-half', color: 'text-gray-500', bg: 'bg-gray-50 border-gray-200', tasks: [] },
+                { key: 'no_date', label: 'No Due Date', icon: 'fas fa-minus-circle', color: 'text-gray-400', bg: 'bg-gray-50 border-gray-100', tasks: [] },
+            ];
+
+            tasks.forEach(task => {
+                if (!task.due_date) {
+                    groups[5].tasks.push(task);
+                    return;
+                }
+                const d = new Date(task.due_date);
+                d.setHours(0, 0, 0, 0);
+                if (d < today) groups[0].tasks.push(task);
+                else if (d < tomorrow) groups[1].tasks.push(task);
+                else if (d < weekEnd) groups[2].tasks.push(task);
+                else if (d < nextWeekEnd) groups[3].tasks.push(task);
+                else groups[4].tasks.push(task);
+            });
+
+            return groups;
+        };
+
         const handleSaveTask = async () => {
             // Close form and reload tasks
             setShowAddForm(false);
@@ -176,6 +211,25 @@ function TaskManager({ eventId, event, tasks, onTasksChange }) {
                         <span className="sm:hidden">Tasks ({localTasks?.length || 0})</span>
                     </h2>
                     <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                        {/* View toggle */}
+                        <div className="flex rounded-lg border border-gray-300 overflow-hidden self-center sm:self-auto">
+                            <button
+                                onClick={() => setView('kanban')}
+                                className={`px-3 py-2 text-sm flex items-center gap-1.5 transition-colors ${view === 'kanban' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+                                title="Kanban view"
+                            >
+                                <i className="fas fa-columns"></i>
+                                <span className="hidden sm:inline">Kanban</span>
+                            </button>
+                            <button
+                                onClick={() => setView('timeline')}
+                                className={`px-3 py-2 text-sm flex items-center gap-1.5 border-l border-gray-300 transition-colors ${view === 'timeline' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+                                title="Timeline view"
+                            >
+                                <i className="fas fa-timeline"></i>
+                                <span className="hidden sm:inline">Timeline</span>
+                            </button>
+                        </div>
                         <button
                             onClick={() => setShowAIUploader(!showAIUploader)}
                             className="px-3 py-2 sm:px-4 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 text-sm sm:text-base flex items-center justify-center w-full sm:w-auto"
@@ -293,47 +347,106 @@ function TaskManager({ eventId, event, tasks, onTasksChange }) {
                     eventId={currentEventId}
                 />
 
-                <div className="space-y-4 md:space-y-0 md:grid md:grid-cols-3 md:gap-6">
-                    <window.KanbanColumn 
-                        title="Not Started" 
-                        status="not_started"
-                        tasks={tasksByStatus.not_started}
-                        onEdit={(task) => {
-                            setEditingTask(task);
-                            setShowAddForm(true);
-                        }}
-                        onTasksChange={loadTasks}
-                        onTaskMove={handleTaskMove}
-                        color="border-yellow-200 bg-yellow-50"
-                        eventId={currentEventId}
-                    />
-                    <window.KanbanColumn 
-                        title="In Progress" 
-                        status="in_progress"
-                        tasks={tasksByStatus.in_progress}
-                        onEdit={(task) => {
-                            setEditingTask(task);
-                            setShowAddForm(true);
-                        }}
-                        onTasksChange={loadTasks}
-                        onTaskMove={handleTaskMove}
-                        color="border-blue-200 bg-blue-50"
-                        eventId={currentEventId}
-                    />
-                    <window.KanbanColumn 
-                        title="Completed" 
-                        status="completed"
-                        tasks={tasksByStatus.completed}
-                        onEdit={(task) => {
-                            setEditingTask(task);
-                            setShowAddForm(true);
-                        }}
-                        onTasksChange={loadTasks}
-                        onTaskMove={handleTaskMove}
-                        color="border-green-200 bg-green-50"
-                        eventId={currentEventId}
-                    />
-                </div>
+                {view === 'kanban' ? (
+                    <div className="space-y-4 md:space-y-0 md:grid md:grid-cols-3 md:gap-6">
+                        <window.KanbanColumn
+                            title="Not Started"
+                            status="not_started"
+                            tasks={tasksByStatus.not_started}
+                            onEdit={(task) => {
+                                setEditingTask(task);
+                                setShowAddForm(true);
+                            }}
+                            onTasksChange={loadTasks}
+                            onTaskMove={handleTaskMove}
+                            color="border-yellow-200 bg-yellow-50"
+                            eventId={currentEventId}
+                        />
+                        <window.KanbanColumn
+                            title="In Progress"
+                            status="in_progress"
+                            tasks={tasksByStatus.in_progress}
+                            onEdit={(task) => {
+                                setEditingTask(task);
+                                setShowAddForm(true);
+                            }}
+                            onTasksChange={loadTasks}
+                            onTaskMove={handleTaskMove}
+                            color="border-blue-200 bg-blue-50"
+                            eventId={currentEventId}
+                        />
+                        <window.KanbanColumn
+                            title="Completed"
+                            status="completed"
+                            tasks={tasksByStatus.completed}
+                            onEdit={(task) => {
+                                setEditingTask(task);
+                                setShowAddForm(true);
+                            }}
+                            onTasksChange={loadTasks}
+                            onTaskMove={handleTaskMove}
+                            color="border-green-200 bg-green-50"
+                            eventId={currentEventId}
+                        />
+                    </div>
+                ) : (
+                    <div className="space-y-4">
+                        {getTimelineGroups().map(group => (
+                            group.tasks.length === 0 ? null : (
+                                <div key={group.key} className={`rounded-lg border p-4 ${group.bg}`}>
+                                    <div className={`flex items-center gap-2 mb-3 font-semibold ${group.color}`}>
+                                        <i className={group.icon}></i>
+                                        <span>{group.label}</span>
+                                        <span className="ml-auto text-sm font-normal opacity-70">{group.tasks.length} task{group.tasks.length !== 1 ? 's' : ''}</span>
+                                    </div>
+                                    <div className="space-y-2">
+                                        {group.tasks.map(task => {
+                                            const statusColors = { completed: 'bg-green-100 text-green-700', in_progress: 'bg-blue-100 text-blue-700', not_started: 'bg-yellow-100 text-yellow-700' };
+                                            const priorityDots = { high: 'bg-red-500', medium: 'bg-yellow-400', low: 'bg-green-400' };
+                                            const statusLabel = { completed: 'Completed', in_progress: 'In Progress', not_started: 'Not Started' };
+                                            const status = task.status || 'not_started';
+                                            return (
+                                                <div key={task.id} className="bg-white rounded-md border border-gray-200 px-4 py-3 flex items-start justify-between gap-3 hover:shadow-sm transition-shadow">
+                                                    <div className="flex items-start gap-3 min-w-0">
+                                                        <span className={`mt-1.5 w-2.5 h-2.5 rounded-full flex-shrink-0 ${priorityDots[task.priority] || priorityDots.medium}`} title={`${task.priority || 'medium'} priority`}></span>
+                                                        <div className="min-w-0">
+                                                            <p className="font-medium text-gray-900 truncate">{task.title}</p>
+                                                            {(task.start_date || task.due_date) && (
+                                                                <p className="text-xs text-gray-500 mt-0.5">
+                                                                    {task.start_date && <span>Start: {new Date(task.start_date).toLocaleDateString()}</span>}
+                                                                    {task.start_date && task.due_date && <span className="mx-1">→</span>}
+                                                                    {task.due_date && <span>Due: {new Date(task.due_date).toLocaleDateString()}</span>}
+                                                                </p>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex items-center gap-2 flex-shrink-0">
+                                                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusColors[status] || statusColors.not_started}`}>
+                                                            {statusLabel[status] || 'Not Started'}
+                                                        </span>
+                                                        <button
+                                                            onClick={() => { setEditingTask(task); setShowAddForm(true); }}
+                                                            className="text-gray-400 hover:text-indigo-600 transition-colors"
+                                                            title="Edit task"
+                                                        >
+                                                            <i className="fas fa-pencil text-sm"></i>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            )
+                        ))}
+                        {getFilteredTasks().length === 0 && (
+                            <div className="text-center py-10 text-gray-400">
+                                <i className="fas fa-calendar-xmark text-3xl mb-2"></i>
+                                <p>No tasks yet</p>
+                            </div>
+                        )}
+                    </div>
+                )}
             </div>
         );
     } catch (error) {
